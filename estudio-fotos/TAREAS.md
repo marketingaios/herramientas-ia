@@ -14,7 +14,7 @@ commit.
       Prueba: `test_estructura.py` (los archivos existen; `CLAUDE.md` es `@AGENTS.md`; `AGENTS.md` tiene las reglas, el
       método, la tabla con sus columnas y el «Abre …»; `.gitignore` cubre lo pedido; todas las dependencias llevan
       `==`; la firma está en `inicio/index.html`).
-- [ ] **Paso 2 · Configuración y plataformas**: `config.py` con la salvaguarda de las pruebas, `plataformas.py`,
+- [x] **Paso 2 · Configuración y plataformas**: `config.py` con la salvaguarda de las pruebas, `plataformas.py`,
       `plataformas.json`.
       Prueba: `test_config.py` (carpeta temporal y simulador van juntos o no arranca; el simulador solo en
       `127.0.0.1`), `test_plataformas.py` (las 8 plataformas con los valores de la ficha; un JSON roto da un error

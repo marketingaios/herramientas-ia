@@ -1,0 +1,89 @@
+{
+  "nota": "Puedes editar este archivo. ancho y alto: la medida que se exporta, en píxeles. porcentaje: cuánto ocupa el producto. peso_maximo_kb: el peso máximo del archivo (null si la plataforma no publica uno). sin_ampliar: la medida baja, hasta ancho_minimo × alto_minimo, para no agrandar el producto.",
+  "leido": "2026-11-13",
+  "plataformas": [
+    {
+      "id": "mercadolibre",
+      "nombre": "Mercado Libre",
+      "ancho": 1200,
+      "alto": 1200,
+      "porcentaje": 95,
+      "peso_maximo_kb": 10000,
+      "dice": "Fondo blanco puro hecho en digital; la primera foto sin contexto ni empaque; sin logos, textos, marcas de agua ni bordes.",
+      "fuente": "mercadolibre.com.mx/ayuda/805 y developers.mercadolibre.com.ar/trabajar-con-imagenes"
+    },
+    {
+      "id": "amazon",
+      "nombre": "Amazon",
+      "ancho": 2000,
+      "alto": 2000,
+      "ancho_minimo": 1000,
+      "alto_minimo": 1000,
+      "sin_ampliar": true,
+      "porcentaje": 85,
+      "peso_maximo_kb": null,
+      "dice": "Fondo 255, 255, 255; de 500 a 10.000 px en el lado más largo; desde 1000 hay zoom; sin texto ni precios. Pide no agrandar las fotos pequeñas.",
+      "fuente": "sellercentral.amazon.com.mx, guía G1881"
+    },
+    {
+      "id": "shopify",
+      "nombre": "Shopify",
+      "ancho": 2048,
+      "alto": 2048,
+      "porcentaje": 85,
+      "peso_maximo_kb": 20000,
+      "dice": "Hasta 5000×5000; la misma proporción en todas las fotos principales. No dice cuánto debe ocupar el producto.",
+      "fuente": "help.shopify.com, «product media types»"
+    },
+    {
+      "id": "tiendanube",
+      "nombre": "Tiendanube",
+      "ancho": 1280,
+      "alto": 1280,
+      "porcentaje": 85,
+      "peso_maximo_kb": 500,
+      "dice": "Recomienda 100-500 KB por foto; la plataforma no adapta las fotos. No dice cuánto debe ocupar el producto.",
+      "fuente": "ayuda.tiendanube.com, «cómo adaptar el tamaño»"
+    },
+    {
+      "id": "instagram",
+      "nombre": "Instagram (feed)",
+      "ancho": 1080,
+      "alto": 1350,
+      "porcentaje": 80,
+      "peso_maximo_kb": null,
+      "dice": "1080 de ancho, de 1,91:1 a 3:4. No dice cuánto debe ocupar el producto.",
+      "fuente": "help.instagram.com/1631821640426723"
+    },
+    {
+      "id": "catalogo-meta",
+      "nombre": "Catálogo de Facebook e Instagram",
+      "ancho": 1024,
+      "alto": 1024,
+      "porcentaje": 85,
+      "peso_maximo_kb": 8000,
+      "dice": "Fondo blanco recomendado; sin textos sobre el producto, llamadas a la acción, códigos ni marcas de agua.",
+      "fuente": "facebook.com/business/help/686259348512056"
+    },
+    {
+      "id": "whatsapp",
+      "nombre": "WhatsApp Business (catálogo)",
+      "ancho": 1024,
+      "alto": 1024,
+      "porcentaje": 85,
+      "peso_maximo_kb": 8000,
+      "dice": "WhatsApp no publica medidas: usamos las del catálogo de Meta, que se puede conectar a WhatsApp.",
+      "fuente": "faq.whatsapp.com/405903568419894"
+    },
+    {
+      "id": "google",
+      "nombre": "Google Merchant Center",
+      "ancho": 1500,
+      "alto": 1500,
+      "porcentaje": 85,
+      "peso_maximo_kb": 16000,
+      "dice": "Mínimo 500×500, obligatorio desde el 31/01/2027; pide que el producto ocupe entre el 75 % y el 90 %; sin llamadas a la acción, precios, marcas de agua, logos añadidos ni bordes.",
+      "fuente": "support.google.com/merchants/answer/6324350"
+    }
+  ]
+}
