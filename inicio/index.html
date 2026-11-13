@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Herramientas del negocio</title>
+    <link rel="stylesheet" href="../estilo/estilo.css" />
+    <link rel="stylesheet" href="inicio.css" />
+  </head>
+  <body>
+    <main class="inicio">
+      <header class="inicio-cabecera">
+        <h1>Herramientas del negocio</h1>
+        <p class="ayuda">
+          Funcionan solo en este computador. Para abrir una, pídeselo a tu agente de IA: «Abre el estudio de fotos».
+        </p>
+      </header>
+
+      <ul class="inicio-lista">
+        <li class="tarjeta inicio-herramienta" id="estudio-fotos">
+          <div>
+            <h2>Estudio de fotos de producto</h2>
+            <p>
+              Convierte las fotos de tus productos en fotos listas para vender: sin fondo, con fondo blanco, en las
+              medidas de cada tienda online y, si quieres, en escenas hechas con IA.
+            </p>
+            <p class="ayuda">
+              Versión 1 · Para abrirla:
+              <code>uv run --directory estudio-fotos python -m estudio</code>
+            </p>
+          </div>
+          <a class="boton boton-principal" href="http://127.0.0.1:8601">http://127.0.0.1:8601</a>
+        </li>
+      </ul>
+    </main>
+
+    <footer class="firma">
+      <a href="https://marketingaios.com/?origen=herramienta-estudio-fotos" target="_blank" rel="noopener">
+        <img src="../marca/ismagit_negro.png" alt="Ismagit" height="18" />
+        <span>Hecho con la guía de Ismagit</span>
+      </a>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,51 @@
+/* Página de inicio: la lista de herramientas. */
+.inicio {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 20px 0;
+}
+
+.inicio-cabecera {
+  margin-bottom: 24px;
+}
+
+.inicio-cabecera h1 {
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+
+.inicio-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.inicio-herramienta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.inicio-herramienta > div {
+  flex: 1 1 380px;
+  display: grid;
+  gap: 8px;
+}
+
+.inicio-herramienta h2 {
+  font-size: 19px;
+}
+
+.inicio-herramienta code {
+  font-size: 12.5px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--superficie-suave);
+  overflow-wrap: anywhere;
+}

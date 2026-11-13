@@ -1,0 +1,37 @@
+[project]
+name = "estudio-fotos"
+version = "1.0.0"
+description = "Estudio de fotos de producto: recorte, fondo blanco, medidas de cada tienda y escenas con IA, en tu computador."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fastapi==0.162.6",
+    "uvicorn==0.54.0",
+    "python-multipart==0.0.33",
+    "pillow==13.0.0",
+    "numpy==2.5.4",
+    "rembg==2.0.87",
+    "httpx==0.28.1",
+]
+
+# El recorte necesita onnxruntime. Por defecto se instala la versión para el procesador («cpu»).
+# En un PC con tarjeta NVIDIA se puede usar la versión acelerada, como opción aparte:
+#   uv run --directory estudio-fotos --no-default-groups --group gpu python -m estudio
+[dependency-groups]
+cpu = ["rembg[cpu]==2.0.87"]
+gpu = ["rembg[gpu]==2.0.87"]
+pruebas = ["pytest==9.2.0", "playwright==1.65.1"]
+
+[tool.uv]
+package = false
+default-groups = ["cpu"]
+conflicts = [[{ group = "cpu" }, { group = "gpu" }]]
+
+[tool.pytest.ini_options]
+testpaths = ["pruebas"]
+pythonpath = ["."]
+addopts = "-q -m 'not modelo and not e2e'"
+markers = [
+    "modelo: usa el modelo real de recorte (la primera vez lo descarga)",
+    "e2e: de punta a punta, con Playwright y Chromium sin ventana",
+]

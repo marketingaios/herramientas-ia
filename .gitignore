@@ -1,0 +1,32 @@
+# Claves: las escribe la página de Ajustes; nunca van a git
+.env
+.env.*
+
+# Modelos descargados, compartidos por todas las herramientas
+modelos/
+
+# Archivos temporales y resultados de cada herramienta
+*/trabajo/
+*/salidas/
+
+# Gastos y ajustes de cada negocio
+gastos.jsonl
+*/gastos.jsonl
+*/ajustes.json
+*/medicion.json
+*/logo_negocio.png
+
+# Entornos virtuales y cachés
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*/.navegadores/
+*/.pruebas-tmp/
+
+# Sistema
+.DS_Store
+Thumbs.db

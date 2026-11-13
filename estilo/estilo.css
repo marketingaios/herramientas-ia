@@ -1,0 +1,246 @@
+/* Estilo común de las herramientas de herramientas-ia.
+   Los colores de la marca del negocio son variables: cada herramienta las cambia desde sus Ajustes.
+   No carga nada de internet: solo fuentes del sistema. */
+
+:root {
+  /* Marca del negocio (se cambian en Ajustes) */
+  --color-principal: #1f2937;
+  --color-acento: #0e9f6e;
+  --color-sobre-principal: #ffffff;
+  --color-sobre-acento: #ffffff;
+
+  /* Neutros */
+  --fondo: #f5f6f8;
+  --superficie: #ffffff;
+  --superficie-suave: #f0f2f5;
+  --texto: #1b1f24;
+  --texto-suave: #5b6470;
+  --borde: #e1e5ea;
+
+  /* Estados */
+  --bien: #067647;
+  --bien-fondo: #ecfdf3;
+  --aviso: #93540a;
+  --aviso-fondo: #fff6e5;
+  --error: #b42318;
+  --error-fondo: #fef3f2;
+
+  --radio: 12px;
+  --radio-chico: 8px;
+  --sombra: 0 1px 2px rgba(16, 24, 40, 0.05), 0 2px 6px rgba(16, 24, 40, 0.06);
+  --fuente: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--fuente);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Tarjetas */
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 20px;
+}
+
+/* Botones */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--superficie);
+  color: var(--texto);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.boton:hover {
+  background: var(--superficie-suave);
+}
+
+.boton:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-acento) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.boton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.boton-principal {
+  background: var(--color-acento);
+  border-color: var(--color-acento);
+  color: var(--color-sobre-acento);
+}
+
+.boton-principal:hover {
+  background: color-mix(in srgb, var(--color-acento) 88%, #000);
+}
+
+.boton-enlace {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--texto-suave);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.boton-enlace:hover {
+  background: none;
+  color: var(--texto);
+}
+
+/* Campos */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo > span,
+.etiqueta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--superficie);
+  color: var(--texto);
+  font: inherit;
+}
+
+.ayuda {
+  font-size: 13px;
+  color: var(--texto-suave);
+}
+
+/* Notas de estado */
+.nota {
+  padding: 10px 14px;
+  border-radius: var(--radio-chico);
+  border: 1px solid var(--borde);
+  background: var(--superficie-suave);
+  font-size: 14px;
+}
+
+.nota-bien {
+  border-color: color-mix(in srgb, var(--bien) 30%, transparent);
+  background: var(--bien-fondo);
+  color: var(--bien);
+}
+
+.nota-aviso {
+  border-color: color-mix(in srgb, var(--aviso) 30%, transparent);
+  background: var(--aviso-fondo);
+  color: var(--aviso);
+}
+
+.nota-error {
+  border-color: color-mix(in srgb, var(--error) 30%, transparent);
+  background: var(--error-fondo);
+  color: var(--error);
+}
+
+/* Barra de avance */
+.barra {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--superficie-suave);
+  overflow: hidden;
+}
+
+.barra > div {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--color-acento);
+  transition: width 0.3s ease;
+}
+
+/* La firma de Ismagit, en el pie de cada página (nunca en las fotos) */
+.firma {
+  margin-top: auto;
+  padding: 28px 16px 22px;
+  text-align: center;
+}
+
+.firma a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--texto-suave);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.firma a:hover span {
+  text-decoration: underline;
+}
+
+.firma img {
+  height: 18px;
+  width: auto;
+  display: block;
+}

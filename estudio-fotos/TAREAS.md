@@ -9,7 +9,7 @@ commit.
 
 ## Construcción
 
-- [ ] **Paso 1 · Carpeta común y proyecto**: `AGENTS.md`, `CLAUDE.md`, `.gitignore`, `estilo/` (CSS y firma),
+- [x] **Paso 1 · Carpeta común y proyecto**: `AGENTS.md`, `CLAUDE.md`, `.gitignore`, `estilo/` (CSS y firma),
       `inicio/`, `modelos/`; proyecto uv con las versiones fijadas y `uv.lock`.
       Prueba: `test_estructura.py` (los archivos existen; `CLAUDE.md` es `@AGENTS.md`; `AGENTS.md` tiene las reglas, el
       método, la tabla con sus columnas y el «Abre …»; `.gitignore` cubre lo pedido; todas las dependencias llevan
