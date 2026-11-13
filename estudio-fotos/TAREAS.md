@@ -33,7 +33,7 @@ commit.
       sola sesión por lote, un error no rompe el lote, estados de la descarga del modelo (descargando con su tamaño,
       fallida, reintento).
       Prueba: `test_cola.py`.
-- [ ] **Paso 7 · Medidas en lote, resultados y descarga**: medidas por foto y plataforma, ZIP de todo o de una
+- [x] **Paso 7 · Medidas en lote, resultados y descarga**: medidas por foto y plataforma, ZIP de todo o de una
       plataforma, `resumen.csv`.
       Prueba: `test_medidas.py`, `test_descargas.py`.
 - [ ] **Paso 8 · Clave y ajustes**: `.env` (solo su línea, permisos 600, se lee cada vez), máscara, `ajustes.json`,

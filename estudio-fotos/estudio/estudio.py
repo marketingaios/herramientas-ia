@@ -17,8 +17,11 @@ from typing import Callable
 
 from PIL import Image
 
-from . import HERRAMIENTA, VERSION, equipo
+from . import HERRAMIENTA, VERSION, descargas, equipo
 from .config import Config
+from .encuadre import Salida, exportar
+from .plataformas import ErrorPlataformas, Plataforma
+from .plataformas import cargar as cargar_plataformas
 from .recorte import (
     MENSAJE_DESCARGANDO,
     MODELOS,
@@ -63,6 +66,7 @@ class Foto:
     error: str | None = None
     segundos: float | None = None
     cobertura: float | None = None
+    porcentaje: float | None = None  # cuánto ocupa el producto en la foto original (lado que más llena)
     recorte: Path | None = None  # el PNG con transparencia, en salidas/
     peso_recorte: int = 0
     salidas: dict = field(default_factory=dict)  # id de plataforma → Salida
@@ -446,6 +450,8 @@ class Estudio:
             else:
                 foto.estado, foto.error = "lista", None
                 foto.recorte, foto.cobertura = destino, resultado.cobertura
+                izquierda, arriba, derecha, abajo = resultado.caja
+                foto.porcentaje = max((derecha - izquierda) / foto.ancho, (abajo - arriba) / foto.alto) * 100
                 foto.peso_recorte = destino.stat().st_size
             trabajo = self.trabajos["recorte"]
             trabajo.terminar_archivo(error)
@@ -464,6 +470,106 @@ class Estudio:
                 self._hay_trabajo.wait(timeout=min(resto, 0.2))
         return True
 
+    # --- Fondo blanco y medidas ----------------------------------------------------------------------------------
+
+    def plataformas(self) -> list[Plataforma]:
+        """Las plataformas de `plataformas.json`, leídas en el momento (el usuario puede editar el archivo)."""
+        try:
+            return cargar_plataformas(self.config.plataformas)
+        except ErrorPlataformas as error:
+            raise ErrorEstudio(str(error), 409)
+
+    def generar_medidas(self, ids_fotos: list[str], ids_plataformas: list[str]) -> int:
+        """Empieza el lote de fondo blanco y medidas. Devuelve cuántos archivos se van a crear."""
+        elegidas = [p for p in self.plataformas() if p.id in set(ids_plataformas)]
+        if not elegidas:
+            raise ErrorEstudio("Elige al menos una plataforma.")
+        with self._hay_trabajo:
+            fotos = [self.fotos[i] for i in dict.fromkeys(ids_fotos) if i in self.fotos and self.fotos[i].estado == "lista"]
+            if not fotos:
+                raise ErrorEstudio("Elige al menos una foto ya recortada.")
+            trabajo = self.trabajos["medidas"]
+            if trabajo.estado == "trabajando":
+                raise ErrorEstudio("Ya se están generando las medidas: espera a que terminen.", 409)
+            trabajo.empezar(total=len(fotos) * len(elegidas))
+            carpeta = self.carpeta_salidas
+        threading.Thread(target=self._hacer_medidas, args=(fotos, elegidas, carpeta), name="medidas", daemon=True).start()
+        return len(fotos) * len(elegidas)
+
+    def _hacer_medidas(self, fotos: list[Foto], plataformas: list[Plataforma], carpeta: Path) -> None:
+        trabajo = self.trabajos["medidas"]
+        for foto in fotos:
+            recorte = None
+            for plataforma in plataformas:
+                with self._candado:
+                    trabajo.empezar_archivo(f"{foto.nombre}_{plataforma.id}.jpg")
+                error = None
+                try:
+                    if recorte is None:
+                        with Image.open(foto.recorte) as abierto:
+                            abierto.load()
+                            recorte = abierto.convert("RGBA")
+                    salida = exportar(recorte, foto.nombre, plataforma, carpeta / plataforma.id)
+                except Exception as fallo:
+                    registro.error("No se pudo crear un archivo de medidas (%s)", type(fallo).__name__)
+                    error, salida = "No se pudo crear este archivo. Vuelve a generar las medidas.", None
+                with self._hay_trabajo:
+                    if salida is not None:
+                        anterior = foto.salidas.get(plataforma.id)
+                        if anterior is not None and anterior.ruta != salida.ruta:
+                            anterior.ruta.unlink(missing_ok=True)  # la medida cambió: fuera el archivo viejo
+                        foto.salidas[plataforma.id] = salida
+                    trabajo.terminar_archivo(error)
+        with self._hay_trabajo:
+            trabajo.terminar()
+            self._hay_trabajo.notify_all()
+
+    # --- Archivos de resultados y descarga -----------------------------------------------------------------------
+
+    def archivo(self, foto_id: str, nombre: str) -> Path:
+        """La ruta de un archivo de resultados. Solo se sirven los que el propio estudio creó y tiene anotados."""
+        with self._candado:
+            foto = self.fotos.get(foto_id)
+            conocidos = {} if foto is None else self._archivos_de(foto)
+        ruta = conocidos.get(nombre)
+        if ruta is None or not ruta.is_file():
+            raise ErrorEstudio("Ese archivo no existe.", 404)
+        return ruta
+
+    def _archivos_de(self, foto: Foto) -> dict[str, Path]:
+        archivos = {}
+        if foto.recorte is not None:
+            archivos[foto.recorte.name] = foto.recorte
+        for salida in foto.salidas.values():
+            archivos[salida.archivo] = salida.ruta
+        for escena in foto.escenas:
+            archivos[escena.archivo] = escena.ruta
+        return archivos
+
+    def descargar(self, filtro: str | None = None) -> Path:
+        """Crea el ZIP de todo, o de una sola plataforma («recortes» y «escenas» también valen), con resumen.csv."""
+        filtro = filtro or "todo"
+        with self._candado:
+            entradas = descargas.reunir(list(self.fotos.values()), self._orden_plataformas())
+            sesion = self.sesion
+        grupos = {entrada.grupo for entrada in entradas}
+        if filtro != "todo":
+            if filtro not in grupos and filtro not in {"recortes", "escenas", *self._orden_plataformas()}:
+                raise ErrorEstudio("Esa plataforma no existe.", 404)
+            entradas = [entrada for entrada in entradas if entrada.grupo == filtro]
+        if not entradas:
+            raise ErrorEstudio("Todavía no hay archivos para descargar.", 409)
+        carpeta = self.config.trabajo / "descargas"
+        carpeta.mkdir(parents=True, exist_ok=True)
+        sufijo = "" if filtro == "todo" else f"_{filtro}"
+        return descargas.crear_zip(entradas, carpeta / f"estudio-fotos_{sesion}{sufijo}.zip")
+
+    def _orden_plataformas(self) -> list[str]:
+        try:
+            return [p.id for p in cargar_plataformas(self.config.plataformas)]
+        except ErrorPlataformas:
+            return []
+
     # --- Lo que ve la página -------------------------------------------------------------------------------------
 
     def _foto_publica(self, foto: Foto) -> dict:
@@ -473,6 +579,7 @@ class Estudio:
                 "archivo": foto.recorte.name,
                 "medida": f"{foto.ancho}×{foto.alto}",
                 "peso": foto.peso_recorte,
+                "peso_texto": descargas.texto_bytes(foto.peso_recorte),
                 "url": f"/api/archivos/{foto.id}/{foto.recorte.name}",
             }
         return {
@@ -486,6 +593,25 @@ class Estudio:
             "error": foto.error,
             "segundos": None if foto.segundos is None else round(foto.segundos, 1),
             "recorte": recorte,
+            "salidas": [self._salida_publica(foto, salida) for salida in self._salidas_en_orden(foto)],
+        }
+
+    def _salidas_en_orden(self, foto: Foto) -> list[Salida]:
+        orden = {identificador: n for n, identificador in enumerate(self._orden_plataformas())}
+        return sorted(foto.salidas.values(), key=lambda salida: orden.get(salida.plataforma, len(orden)))
+
+    @staticmethod
+    def _salida_publica(foto: Foto, salida: Salida) -> dict:
+        return {
+            "plataforma": salida.plataforma,
+            "nombre_plataforma": salida.nombre_plataforma,
+            "archivo": salida.archivo,
+            "medida": f"{salida.ancho}×{salida.alto}",
+            "peso": salida.peso,
+            "peso_texto": descargas.texto_bytes(salida.peso),
+            "porcentaje": numero(salida.porcentaje, 0),
+            "avisos": list(salida.avisos),
+            "url": f"/api/archivos/{foto.id}/{salida.archivo}",
         }
 
     def publico(self) -> dict:
