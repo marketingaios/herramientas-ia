@@ -51,7 +51,7 @@ def test_el_codigo_no_usa_nada_peligroso(prohibido):
 def test_las_unicas_direcciones_de_internet_del_codigo_son_las_de_openrouter():
     permitidas = (
         "https://openrouter.ai/api/v1",  # la API de OpenRouter: /images y /key
-        "http://127.0.0.1", "http://localhost", "http://{host}",  # este computador
+        "http://127.0.0.1", "http://localhost", "http://{host}", "http://{ANFITRION}",  # este computador
     )
     # Nombres de formato XMP (identificadores dentro de los metadatos de las escenas): no se abren nunca.
     identificadores = {
