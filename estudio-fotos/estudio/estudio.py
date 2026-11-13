@@ -229,12 +229,19 @@ class Estudio:
         return self.config.salidas / self.sesion
 
     def limpiar_trabajo(self) -> None:
-        """Vacía los archivos temporales de una ejecución anterior. Se llama una vez, al arrancar."""
-        for elemento in self.config.trabajo.iterdir():
-            if elemento.is_dir():
-                shutil.rmtree(elemento, ignore_errors=True)
-            else:
-                elemento.unlink(missing_ok=True)
+        """Vacía los archivos temporales (las fotos subidas, entre otros). Se llama al arrancar y al cerrar."""
+        try:
+            elementos = list(self.config.trabajo.iterdir())
+        except OSError:
+            return  # no hay carpeta: nada que vaciar
+        for elemento in elementos:
+            try:
+                if elemento.is_dir() and not elemento.is_symlink():
+                    shutil.rmtree(elemento, ignore_errors=True)
+                else:
+                    elemento.unlink(missing_ok=True)
+            except OSError:
+                pass  # un archivo en uso (Windows): se borrará en el siguiente arranque
 
     def cerrar(self) -> None:
         with self._hay_trabajo:

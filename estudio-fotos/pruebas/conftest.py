@@ -87,10 +87,15 @@ def sin_internet():
 
 @pytest.fixture(autouse=True)
 def carpeta_temporal_del_sistema():
-    """El servidor manda sus temporales a `trabajo/`: después de cada prueba se deja como estaba."""
-    antes = tempfile.tempdir
+    """El servidor manda sus temporales a `trabajo/` (y el acelerador, los suyos): después de cada prueba se deja
+    todo como estaba."""
+    antes, variable = tempfile.tempdir, os.environ.get("TMPDIR")
     yield
     tempfile.tempdir = antes
+    if variable is None:
+        os.environ.pop("TMPDIR", None)
+    else:
+        os.environ["TMPDIR"] = variable
 
 
 @pytest.fixture(scope="session")

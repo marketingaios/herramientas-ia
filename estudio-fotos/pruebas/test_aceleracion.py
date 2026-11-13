@@ -258,6 +258,27 @@ def test_un_medicion_json_roto_no_rompe_nada(crear, tmp_path):
     assert aceleracion.medir(MODELO, 7.5)["elegido"] == "coreml"  # y se puede medir y guardar encima
 
 
+def test_si_se_elige_el_acelerador_sus_temporales_van_a_la_carpeta_de_trabajo(crear, tmp_path, monkeypatch):
+    """En el proceso de la herramienta, igual que en el de la prueba: nada se escribe fuera de la carpeta."""
+    monkeypatch.setenv("TMPDIR", "/otra/carpeta/temporal")
+    aceleracion, _ = crear("rapida")
+
+    assert aceleracion.proveedores_para(MODELO) == PROCESADOR  # sin medir, el procesador
+    assert os.environ["TMPDIR"] == "/otra/carpeta/temporal"  # y nada se toca
+    aceleracion.medir(MODELO, 7.5)
+    assert os.environ["TMPDIR"] == "/otra/carpeta/temporal"  # medir tampoco cambia nada en este proceso
+
+    assert aceleracion.proveedores_para(MODELO) == PROVEEDORES_COREML
+    assert os.environ["TMPDIR"] == str(tmp_path / "trabajo" / "acelerador")
+    assert (tmp_path / "trabajo" / "acelerador").is_dir()
+
+    # Con el procesador (la medición lo dejó, o el acelerador falló después) no se cambia nada.
+    monkeypatch.setenv("TMPDIR", "/otra/carpeta/temporal")
+    aceleracion.anotar_fallo(MODELO)
+    assert aceleracion.proveedores_para(MODELO) == PROCESADOR
+    assert os.environ["TMPDIR"] == "/otra/carpeta/temporal"
+
+
 def test_si_la_medicion_eligio_coreml_pero_ya_no_hay_coreml_se_usa_el_procesador(crear, tmp_path):
     crear("rapida")[0].medir(MODELO, 7.5)
     sin_coreml = Aceleracion(

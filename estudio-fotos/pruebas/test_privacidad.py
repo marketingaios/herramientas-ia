@@ -7,6 +7,9 @@ from __future__ import annotations
 import io
 import json
 import logging
+import os
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
 
@@ -228,3 +231,101 @@ def test_el_registro_no_escribe_trazas_con_rutas(clave_falsa, registros):
     assert "Exception in ASGI application" in registrado
     assert clave_falsa not in registrado and str(Path.home()) not in registrado
     assert "Traceback" not in registrado and "test_privacidad.py" not in registrado
+
+
+# --- Lo que escriben las librerías, los avisos y los errores no controlados (revisión, C1) ------------------------
+
+# Un programa aparte, con la consola protegida como al arrancar: escribe por todos los caminos que no son nuestros.
+_GUION_CONSOLA = """
+import logging, sys, threading, warnings
+from pathlib import Path
+
+from estudio import registro
+
+registro.proteger_consola()
+personal, clave = str(Path.home()), sys.argv[1]
+
+import pooch
+
+pooch.get_logger().info("Downloading data from 'un servidor' to file '%s/herramientas-ia/modelos/models/m/m.onnx'.", personal)
+warnings.warn(f"aviso de una librería sobre {personal}/algo con {clave}")
+logging.getLogger("asyncio").error("Tarea rota en %s", personal, exc_info=ValueError(f"{personal}/x con {clave}"))
+logging.Logger("suelto").warning("registro suelto en %s", personal)
+
+
+def falla():
+    raise RuntimeError(f"hilo roto en {personal} con {clave}")
+
+
+hilo = threading.Thread(target=falla)
+hilo.start()
+hilo.join()
+print("SIGUE DESPUÉS DEL HILO", flush=True)
+raise OSError(f"no se pudo abrir {personal}/secreto con {clave}")
+"""
+
+
+def test_la_consola_no_muestra_la_carpeta_personal_por_ningun_camino(clave_falsa):
+    """La descarga del modelo (pooch), los avisos de Python, los registros de las librerías y los errores no
+    controlados: todo sale sin la ruta de la carpeta personal, sin la clave y sin trazas."""
+    entorno = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONWARNINGS": "default"}
+    proceso = subprocess.run(
+        [sys.executable, "-c", _GUION_CONSOLA, clave_falsa], cwd=CARPETA, env=entorno, capture_output=True,
+        text=True, encoding="utf-8", timeout=120,
+    )
+    salida = proceso.stdout + proceso.stderr
+    assert proceso.returncode == 1, salida  # el error no controlado sigue cerrando el programa
+    assert str(Path.home()) not in salida and clave_falsa not in salida
+    assert "Traceback" not in salida and "raise OSError" not in salida
+
+    assert "Downloading data from 'un servidor' to file '~/herramientas-ia/modelos/models/m/m.onnx'." in salida
+    assert "aviso de una librería sobre ~/algo con ••••" in salida
+    assert "Tarea rota en ~ (ValueError: ~/x con ••••)" in salida
+    assert "registro suelto en ~" in salida
+    assert "SIGUE DESPUÉS DEL HILO" in salida
+    assert "Error inesperado en segundo plano (RuntimeError, en <string>:" in salida
+    assert "Error inesperado (OSError, en <string>:" in salida
+    assert "Vuelve a abrir la herramienta" in salida
+
+
+def test_el_registro_de_la_descarga_del_modelo_pasa_por_el_filtro(tmp_path, monkeypatch):
+    """rembg descarga con pooch, que escribe la ruta entera del archivo: antes de descargar se le pone el filtro."""
+    import pooch
+
+    from estudio import recorte
+
+    monkeypatch.setenv("REMBG_HOME", "/otra/carpeta")
+    monkeypatch.setenv("U2NET_HOME", "/otra/carpeta")
+    recorte.preparar_entorno(tmp_path)  # por aquí pasan la descarga y cada sesión de recorte
+
+    registro_de_pooch = pooch.get_logger()
+    captura = Captura()
+    registro_de_pooch.addHandler(captura)
+    try:
+        registro_de_pooch.info("Downloading data from 'un servidor' to file '%s'.", Path.home() / "herramientas-ia" / "modelos" / "m.onnx")
+    finally:
+        registro_de_pooch.removeHandler(captura)
+    (linea,) = captura.lineas
+    assert "to file '~" in linea and str(Path.home()) not in linea
+    for salida in registro_de_pooch.handlers:  # también en la salida que pooch trae puesta: la consola
+        assert any(type(filtro).__name__ == "_Filtro" for filtro in [*registro_de_pooch.filters, *salida.filters])
+
+
+def test_la_carpeta_personal_se_tapa_tambien_escrita_con_barras_normales(monkeypatch):
+    """En Windows la misma carpeta puede aparecer con «\\» o con «/»."""
+    from pathlib import PureWindowsPath
+
+    class Personal(PureWindowsPath):
+        @classmethod
+        def home(cls):
+            return cls("C:\\Users\\alguien")
+
+    monkeypatch.setattr(el_registro, "Path", Personal)
+    assert el_registro.limpiar("No se pudo abrir C:\\Users\\alguien\\fotos\\a.jpg") == "No se pudo abrir ~\\fotos\\a.jpg"
+    assert el_registro.limpiar("No se pudo abrir C:/Users/alguien/fotos/a.jpg") == "No se pudo abrir ~/fotos/a.jpg"
+
+
+def test_el_arranque_protege_la_consola_antes_que_nada():
+    codigo = (CARPETA / "estudio" / "__main__.py").read_text(encoding="utf-8")
+    principal = codigo[codigo.index("def main()") :]
+    assert principal.index("el_registro.proteger_consola()") < principal.index("la_config.desde_entorno()")

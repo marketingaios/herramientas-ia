@@ -61,6 +61,33 @@ def test_la_pagina_no_carga_nada_de_internet():
         assert "url(" not in css  # ni imágenes ni fuentes de fuera
 
 
+def test_la_pagina_de_inicio_tampoco_carga_nada_de_internet():
+    """`inicio/index.html` se abre como archivo: solo carga archivos de la carpeta; lo demás son enlaces."""
+    inicio = RAIZ / "inicio"
+    archivos = sorted(p for p in inicio.rglob("*") if p.is_file())
+    assert {p.name for p in archivos} >= {"index.html", "inicio.css"}
+    for archivo in archivos:
+        assert archivo.suffix in {".html", ".css"}, f"archivo inesperado en inicio/: {archivo.name}"
+        texto = archivo.read_text(encoding="utf-8")
+        assert "@import" not in texto and "@font-face" not in texto and "url(" not in texto, archivo.name
+
+    html = _sin_comentarios((inicio / "index.html").read_text(encoding="utf-8"))
+    assert "<script" not in html and "<style" not in html and " style=" not in html and "<iframe" not in html
+    assert not re.search(r"\son[a-z]+\s*=", html) and "javascript:" not in html
+    # Lo que la página carga (hojas de estilo e imágenes): rutas relativas a archivos que existen dentro de la carpeta.
+    cargas = re.findall(r'<link\b[^>]*\bhref="([^"]+)"', html) + re.findall(r'\bsrc="([^"]+)"', html)
+    assert len(cargas) >= 3, cargas
+    for carga in cargas:
+        assert "//" not in carga and ":" not in carga and not carga.startswith("/"), carga
+        destino = (inicio / carga).resolve()
+        assert destino.is_file() and RAIZ.resolve() in destino.parents, carga
+    # Lo demás son enlaces que el usuario pulsa: las herramientas de este computador y la firma.
+    enlaces = re.findall(r'<a\b[^>]*\bhref="([^"]+)"', html)
+    assert enlaces and all(re.fullmatch(r"http://127\.0\.0\.1:\d{4,5}", e) or e == ENLACE_FIRMA for e in enlaces), enlaces
+    direcciones = set(re.findall(r"(?:https?:)?//[A-Za-z0-9][^\s\"'<>)]*", html))
+    assert direcciones <= {ENLACE_FIRMA} | {e for e in enlaces if e.startswith("http://127.0.0.1:")}, direcciones
+
+
 def test_la_pagina_cumple_su_politica_de_contenido():
     """La política CSP solo deja pasar archivos propios: el HTML no lleva código ni estilos escritos dentro."""
     html = _sin_comentarios(_lee("index.html"))

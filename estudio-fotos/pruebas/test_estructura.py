@@ -38,6 +38,8 @@ def _texto(ruta) -> str:
         "estudio-fotos/uv.lock",
         "estudio-fotos/README.md",
         "estudio-fotos/CAMBIOS.md",
+        "estudio-fotos/PRUEBAS.md",
+        "estudio-fotos/REVISION.md",
         "estudio-fotos/plataformas.json",
     ],
 )
@@ -182,7 +184,7 @@ def test_cambios_md_cuenta_la_version_1():
 
 def test_los_documentos_estan_en_espanol_y_sin_datos_personales():
     documentos = [ruta for ruta in CARPETA.glob("*.md") if ruta.name != "FICHA.md"] + [RAIZ / "AGENTS.md"]
-    assert {"README.md", "CAMBIOS.md", "PLAN.md", "TAREAS.md"} <= {ruta.name for ruta in documentos}
+    assert {"README.md", "CAMBIOS.md", "PLAN.md", "TAREAS.md", "PRUEBAS.md", "REVISION.md"} <= {ruta.name for ruta in documentos}
     for ruta in documentos:
         texto = _texto(ruta)
         assert str(Path.home()) not in texto, f"{ruta.name} lleva la ruta de la carpeta personal"

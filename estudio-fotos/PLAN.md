@@ -247,6 +247,19 @@ La ficha manda; donde no dice nada, elegimos lo más simple:
       en el momento y la página lo dice (no hay minutos de preparación que acotar);
     - las pruebas automáticas no miden solas (`Config.medir` es falso en el modo de pruebas): usan procesos de mentira
       que fallan, tardan o ganan. La medición de verdad en este computador va con `pytest -m modelo`.
+36. **Lo que se decidió al corregir la revisión de seguridad** (paso 21; el detalle está en `REVISION.md`):
+    - **la consola**: todo lo que llega a ella pasa por el filtro de los registros, también lo que no escribe la
+      herramienta: la descarga del modelo (pooch), los avisos de Python, los registros de las librerías y los errores
+      no controlados. De esos errores se escribe el tipo y el archivo y la línea (sin su carpeta), nunca la traza;
+    - **una subida «por trozos»** (`Transfer-Encoding`) se rechaza con el mismo 411 que una subida sin peso, en vez de
+      contar los bytes al recibirla: es lo más simple y la página nunca sube así;
+    - **sin contraseña local**: la herramienta solo escucha en `127.0.0.1` y rechaza lo que viene de otra web; un
+      código de sesión complicaría abrirla. El README avisa de que conviene cerrarla en un computador compartido;
+    - **una sola copia a la vez**: no se impide (el puerto siguiente sirve para cuando el 8601 lo ocupa otro
+      programa); el README lo avisa;
+    - **`trabajo/` se vacía también al cerrar**, para que las fotos subidas no se queden ahí;
+    - **los temporales del acelerador**, si la medición lo elige, van a `trabajo/acelerador`. En este computador no se
+      pudo comprobar con CoreML de verdad: aquí la medición deja el procesador.
 
 ## 7. Notas del Revisor sobre el plan
 

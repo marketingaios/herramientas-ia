@@ -96,7 +96,7 @@ def _leer_una(item: object, posicion: int) -> Plataforma:
         raise ErrorPlataformas(f"plataformas.json tiene un error: la plataforma {posicion} no es un objeto.")
 
     identificador = item.get("id")
-    if not isinstance(identificador, str) or not _ID.match(identificador) or len(identificador) > 40:
+    if not isinstance(identificador, str) or not _ID.fullmatch(identificador) or len(identificador) > 40:
         raise ErrorPlataformas(
             f"plataformas.json tiene un error: la plataforma {posicion} necesita un «id» en minúsculas, "
             "con letras, números o guiones."

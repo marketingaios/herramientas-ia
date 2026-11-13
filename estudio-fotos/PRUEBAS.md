@@ -7,16 +7,19 @@ macOS 26.6, Python 3.12.13 y onnxruntime 1.32.0.
 
 | Batería | Cómo se pasa (desde `herramientas-ia`) | Pruebas | Pasan | Tarda |
 |---|---|---|---|---|
-| Rápidas (sin internet, recorte simulado) | `uv run --directory estudio-fotos --group pruebas pytest` | 695 | 695 | 58 s |
+| Rápidas (sin internet, recorte simulado) | `uv run --directory estudio-fotos --group pruebas pytest` | 712 | 712 | 61 s |
 | Con el modelo real de recorte | `uv run --directory estudio-fotos --group pruebas pytest -m modelo` | 9 | 9 | 3 min 12 s |
 | De punta a punta (Chromium sin ventana) | `uv run --directory estudio-fotos --group pruebas pytest -m e2e` | 5 | 5 | 49 s |
-| **Total** | | **709** | **709** | |
+| **Total** | | **726** | **726** | |
 
-Ninguna falla y ninguna se salta.
+Ninguna falla y ninguna se salta. Son los números de la última pasada de las tres baterías, hecha después de corregir
+lo que encontró la revisión de seguridad (antes de la revisión eran 709: 695, 9 y 5).
 
 ## El tiempo por foto en este computador
 
-Con el modelo completo (`birefnet-general`, «Calidad máxima») y el procesador, recortando las 5 fotos de `muestras/`:
+Con el modelo completo (`birefnet-general`, «Calidad máxima») y el procesador, recortando las 5 fotos de `muestras/`.
+Los tiempos de esta tabla y los de la aceleración son de la pasada anterior a la revisión, el mismo día; las
+correcciones de la revisión no tocan el recorte, y la última pasada con el modelo real tardó lo mismo (3 min 12 s):
 
 | Foto | Segundos | La máscara ocupa |
 |---|---|---|
@@ -58,9 +61,9 @@ queda en `medicion.json`.
 
 | Archivo | Pruebas | Qué comprueba |
 |---|---|---|
-| `test_estructura.py` | 38 | la carpeta común, `AGENTS.md`, `.gitignore`, versiones fijadas, la firma, la página de inicio, el README y el comando de arranque |
+| `test_estructura.py` | 40 | la carpeta común, `AGENTS.md`, `.gitignore`, versiones fijadas, la firma, la página de inicio, el README y el comando de arranque |
 | `test_config.py` | 13 | las rutas, y que el modo de pruebas va entero (carpeta temporal y simulador) o no arranca |
-| `test_plataformas.py` | 17 | `plataformas.json`: las 8 plataformas, sus medidas y que un archivo mal editado se explica |
+| `test_plataformas.py` | 19 | `plataformas.json`: las 8 plataformas, sus medidas y que un archivo mal editado se explica |
 | `test_subidas.py` | 44 | formato por contenido, tamaño, lado corto, HEIC, foto dañada, bombas de descompresión, nombres sin rutas |
 | `test_encuadre.py` | 142 | fondo blanco puro, el porcentaje (±1 %) y el centro (±1 %), medida y peso de cada plataforma, la regla de Amazon |
 | `test_recorte.py` | 30 | el recorte, «sin producto», nunca `bria-rmbg`, los dos modelos por su nombre, la carpeta de los modelos |
@@ -71,12 +74,12 @@ queda en `medicion.json`.
 | `test_openrouter.py` | 40 | OpenRouter simulado: éxito, clave no válida, sin saldo (402 y 403), esperas, generación fallida, sin conexión |
 | `test_costos.py` | 35 | la estimación, el tope de la sesión (sin llamar a OpenRouter si se supera), lo que queda en la clave, `gastos.jsonl` |
 | `test_escenas.py` | 67 | las escenas: el texto, el formato sin deformar, la marca IPTC, el costo estimado y el real, los errores |
-| `test_servidor.py` | 69 | cada ruta del servidor, los errores en español, las cabeceras de seguridad, solo este computador |
-| `test_privacidad.py` | 5 | después de usar una clave falsa: ningún registro, resultado, respuesta ni página la contiene |
+| `test_servidor.py` | 73 | cada ruta del servidor, los errores en español, las cabeceras de seguridad, solo este computador, la subida «por trozos» y los datos con otra forma |
+| `test_privacidad.py` | 9 | después de usar una clave falsa: ningún registro, resultado, respuesta ni página la contiene; la consola, sin la carpeta personal por ningún camino |
 | `test_codigo.py` | 24 | el código no usa nada peligroso, solo habla con OpenRouter, y los vigilantes de las pruebas funcionan |
-| `test_arranque.py` | 13 | `python -m estudio`: el puerto, «usamos el N», solo `127.0.0.1`, el navegador |
-| `test_pagina.py` | 27 | la página: en español, la firma, nada de internet, los datos se escriben como texto |
-| `test_aceleracion.py` | 39 | la aceleración, con procesos de mentira: falla → procesador; tarda demasiado → procesador; más rápida → se elige |
+| `test_arranque.py` | 16 | `python -m estudio`: el puerto, «usamos el N», solo `127.0.0.1`, el navegador, un arranque que falla y `trabajo/` vacía al cerrar |
+| `test_pagina.py` | 28 | la página (y la de inicio): en español, la firma, nada de internet, los datos se escriben como texto |
+| `test_aceleracion.py` | 40 | la aceleración, con procesos de mentira: falla → procesador; tarda demasiado → procesador; más rápida → se elige (y sus temporales van a `trabajo/`) |
 
 ### Con el modelo real
 
@@ -99,6 +102,24 @@ datos en una carpeta temporal, el modelo real de recorte y OpenRouter simulado.
    superado, la página lo dice y no se gasta (2 s).
 5. En todos los recorridos, cada petición del navegador fue a este computador, la consola quedó sin errores y la
    salida del servidor no lleva la clave ni rutas personales.
+
+## Después de la revisión de seguridad
+
+La revisión (`REVISION.md`) dejó los 10 puntos de la ficha en «Bien» y pidió una corrección (C1) y seis sugerencias.
+Lo corregido, con sus 17 pruebas nuevas (15 de las correcciones y 2 que exigen que existan `PRUEBAS.md` y
+`REVISION.md`):
+
+| Qué | Prueba |
+|---|---|
+| C1 · La consola no muestra la carpeta personal: ni en la descarga del modelo, ni en los avisos de Python, ni en los registros de las librerías, ni en un error no controlado (sin traza) | `test_privacidad.py`: `test_la_consola_no_muestra_la_carpeta_personal_por_ningun_camino` (un programa aparte que escribe por todos esos caminos), `test_el_registro_de_la_descarga_del_modelo_pasa_por_el_filtro`, `test_la_carpeta_personal_se_tapa_tambien_escrita_con_barras_normales`, `test_el_arranque_protege_la_consola_antes_que_nada`; `test_arranque.py`: `test_si_el_arranque_falla_la_consola_no_muestra_la_traza_ni_la_carpeta_personal` |
+| S1 · Una subida «por trozos» se rechaza antes de recibirla (fotos y logo) | `test_servidor.py`: `test_una_subida_que_pesa_demasiado_se_rechaza_antes_de_recibirla` |
+| S3 · Si se elige el acelerador, sus temporales van a `trabajo/acelerador` | `test_aceleracion.py`: `test_si_se_elige_el_acelerador_sus_temporales_van_a_la_carpeta_de_trabajo` |
+| S4 · La página de inicio tampoco carga nada de internet | `test_pagina.py`: `test_la_pagina_de_inicio_tampoco_carga_nada_de_internet` |
+| S5 · Al cerrar (con Ctrl+C o parada desde fuera), `trabajo/` queda vacía y los resultados se quedan | `test_arranque.py`: `test_al_cerrar_no_quedan_fotos_en_la_carpeta_de_trabajo` (2 casos) |
+| S6 · Un id de plataforma con un salto de línea no vale; una lista donde va un texto da un 400 con su mensaje, no un 500 | `test_plataformas.py` (2 casos más); `test_servidor.py`: `test_una_lista_donde_va_un_texto_se_rechaza_con_su_mensaje_y_no_con_un_fallo_interno` (4 casos) |
+
+S2 (no hay contraseña local) y el resto de S5 (una sola copia a la vez) quedaron avisados en el `README.md`, sin
+cambio en el código.
 
 ## Las salvaguardas de las pruebas
 
@@ -128,3 +149,8 @@ datos en una carpeta temporal, el modelo real de recorte y OpenRouter simulado.
 - **Una tarjeta NVIDIA**: ese camino solo tiene pruebas con piezas de mentira.
 - **El modelo ligero** (`birefnet-general-lite`): no se descargó en este computador (aquí toca el completo). Su nombre
   está comprobado contra la lista de rembg, pero no se recortó ninguna foto con él.
+- **La primera descarga del modelo, mirando la consola**: el modelo ya estaba descargado. Que la línea de la descarga
+  sale sin la carpeta personal está comprobado escribiéndola por el mismo registro que usa la descarga, no
+  descargando de verdad.
+- **Los temporales del acelerador con CoreML de verdad**: aquí la medición deja el procesador, así que ese camino
+  solo tiene la prueba de que la carpeta temporal se cambia a `trabajo/acelerador`.

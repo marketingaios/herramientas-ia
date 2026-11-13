@@ -97,7 +97,7 @@ def main() -> int:
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, OSError):
         pass
-    el_registro.preparar()
+    el_registro.proteger_consola()  # nada llega a la consola con claves ni con la ruta de la carpeta personal
 
     try:
         config = la_config.desde_entorno()

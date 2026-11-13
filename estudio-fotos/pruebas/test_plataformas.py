@@ -74,6 +74,8 @@ def test_el_usuario_puede_anadir_su_plataforma(tmp_path):
         {"otra": 1},
         _una(id="Con Espacios"),
         _una(id="../fuera"),
+        _una(id="mitienda\n"),
+        _una(id="mi tienda"),
         _una(ancho=0),
         _una(alto="mil"),
         _una(ancho=50_000),

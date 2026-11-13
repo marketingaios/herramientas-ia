@@ -112,7 +112,7 @@ def escenas_publicas() -> list[dict]:
 
 def preparar_pedido(escena: object, formato: object, propia: object, negocio: dict) -> Pedido:
     """Comprueba la escena y el formato elegidos y escribe el texto de la petición."""
-    if formato not in FORMATOS:
+    if not isinstance(formato, str) or formato not in FORMATOS:
         raise ErrorEscena(MENSAJE_FORMATO)
     if escena == PROPIA:
         descripcion = _limpiar_propia(propia)

@@ -116,12 +116,15 @@ Si tu Excel separa las columnas con punto y coma y ves todo en una sola columna,
 | La clave | el archivo `.env` de `herramientas-ia` |
 | Las medidas de cada plataforma | `estudio-fotos/plataformas.json` (lo puedes editar) |
 | Lo medido de la aceleración | `estudio-fotos/medicion.json` (bórralo para volver a medir) |
-| Los archivos temporales | `estudio-fotos/trabajo/` (se vacía al abrir la herramienta) |
+| Los archivos temporales | `estudio-fotos/trabajo/` (se vacía al abrir y al cerrar la herramienta) |
 | El modelo de recorte | `herramientas-ia/modelos/` (lo comparten todas las herramientas) |
 
 La herramienta nunca borra tus resultados: «Quitar» y «Empezar de nuevo» vacían la lista de la página, y lo que ya
 estaba en `salidas/` se queda. Cada vez que abres la herramienta (o pulsas «Empezar de nuevo»), los resultados van a
 una carpeta nueva con su fecha y hora, y una escena nueva nunca pisa a una anterior.
+
+Abre una sola copia a la vez. Una segunda copia arranca en el puerto siguiente, pero vacía los archivos temporales de
+la primera (sus fotos dejarían de verse) y lleva su propia cuenta del tope de gasto.
 
 ## Cómo saber si funciona bien: seis controles
 
@@ -144,6 +147,12 @@ una carpeta nueva con su fecha y hora, y una escena nueva nunca pisa a una anter
 - Solo se conecta a internet para tres cosas: instalar las librerías, descargar el modelo de recorte y llamar a
   OpenRouter cuando confirmas unas escenas (o pulsas «Probar»).
 - La clave no aparece en la página, en los registros ni en los mensajes de error.
+- La ventana donde la abriste no muestra la clave ni la ruta de tu carpeta personal: tampoco durante la descarga del
+  modelo ni cuando algo falla.
+- Las fotos que subes se copian a `trabajo/` mientras la herramienta está abierta; al cerrarla se borran de ahí. Tus
+  resultados se quedan en `salidas/`.
+- La herramienta no pide contraseña. Mientras está abierta, otro usuario o programa de este mismo computador podría
+  usarla y gastar con tu clave (verla, no). Si compartes el computador, ciérrala al terminar.
 
 ## Si algo falla
 

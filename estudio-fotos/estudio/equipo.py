@@ -186,8 +186,21 @@ class Aceleracion:
         """El acelerador, si la medición dijo que es lo más rápido; si no, lo de siempre."""
         medida = self.de(modelo)
         if medida and medida["elegido"] == "coreml" and self._hay_coreml():
+            self._temporales_dentro()
             return list(PROVEEDORES_COREML)
         return proveedores_para(apple=self._apple)
+
+    def _temporales_dentro(self) -> None:
+        """Si se va a usar el acelerador en este proceso, sus temporales también van dentro de `trabajo/`.
+
+        Igual que en la prueba, que los manda a `trabajo/aceleracion`: nada se escribe fuera de la carpeta.
+        """
+        carpeta = self.carpeta_trabajo / "acelerador"
+        try:
+            carpeta.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            return
+        os.environ["TMPDIR"] = str(carpeta)
 
     def texto(self, modelo: str) -> str | None:
         """Lo medido, en una frase para la página."""

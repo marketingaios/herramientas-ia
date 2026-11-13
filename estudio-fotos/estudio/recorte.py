@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .encuadre import UMBRAL_PRODUCTO, caja_producto
 from .equipo import PROCESADOR
+from .registro import proteger_descargas
 
 # Los dos únicos modelos que usa la herramienta, con su tamaño de descarga en MB.
 MODELOS = {
@@ -176,11 +177,13 @@ def preparar_entorno(carpeta_modelos: Path) -> None:
 
     Comprobado en el código de rembg 2.0.87: `REMBG_HOME` es la raíz (cada modelo queda en
     `<REMBG_HOME>/models/<nombre>/<nombre>.onnx`), pero si existe `U2NET_HOME` gana esa. Ponemos las dos, para que
-    nada se lea ni se escriba en la carpeta personal.
+    nada se lea ni se escriba en la carpeta personal. Y lo que la descarga escriba en la consola pasa por el filtro
+    de los registros: sin la ruta de la carpeta personal.
     """
     carpeta = str(Path(carpeta_modelos).resolve())
     os.environ["REMBG_HOME"] = carpeta
     os.environ["U2NET_HOME"] = carpeta
+    proteger_descargas()
 
 
 def ruta_modelo(carpeta_modelos: Path, modelo: str) -> Path:

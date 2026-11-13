@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import queue
 import random
+import signal
 import socket
 import subprocess
 import sys
@@ -16,6 +17,7 @@ import time
 import httpx
 import pytest
 
+import ayudas
 from conftest import CARPETA
 from estudio import __main__ as arranque
 
@@ -41,7 +43,7 @@ def _puerto_libre() -> int:
 class Proceso:
     """La herramienta arrancada como la arranca el usuario, pero con las variables de las pruebas."""
 
-    def __init__(self, carpeta_datos, simulador, puerto: int, **entorno_extra) -> None:
+    def __init__(self, carpeta_datos, simulador, puerto: int, orden: list[str] | None = None, **entorno_extra) -> None:
         entorno = {k: v for k, v in os.environ.items() if not k.startswith("ESTUDIO_")}
         entorno.update(
             ESTUDIO_CARPETA_DATOS=str(carpeta_datos),
@@ -56,7 +58,7 @@ class Proceso:
         for quitar in [k for k, v in entorno.items() if v is None]:
             del entorno[quitar]
         self.proceso = subprocess.Popen(
-            [sys.executable, "-m", "estudio"], cwd=CARPETA, env=entorno, text=True, encoding="utf-8",
+            [sys.executable, *(orden or ["-m", "estudio"])], cwd=CARPETA, env=entorno, text=True, encoding="utf-8",
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         )
         self.lineas: list[str] = []
@@ -101,8 +103,8 @@ class Proceso:
 def arrancar(carpeta_datos, simulador):
     procesos = []
 
-    def _arrancar(puerto: int, **entorno) -> Proceso:
-        proceso = Proceso(carpeta_datos, simulador, puerto, **entorno)
+    def _arrancar(puerto: int, orden: list[str] | None = None, **entorno) -> Proceso:
+        proceso = Proceso(carpeta_datos, simulador, puerto, orden, **entorno)
         procesos.append(proceso)
         return proceso
 
@@ -269,3 +271,65 @@ def test_un_simulador_fuera_de_este_computador_no_se_acepta(arrancar):
     proceso = arrancar(_puerto_libre(), ESTUDIO_OPENROUTER_URL="https://otro-servidor.example/api/v1")
     assert proceso.proceso.wait(timeout=30) == 2
     assert "debe apuntar a 127.0.0.1 o localhost" in proceso.salida()
+
+
+# --- La consola y la carpeta de trabajo (revisión de seguridad) ---------------------------------------------------------
+
+# El arranque de siempre, pero con la aplicación rota: un error que nadie controla, con una ruta personal dentro.
+_ARRANQUE_ROTO = """
+import sys
+from pathlib import Path
+
+import estudio.servidor as servidor
+
+
+def rota(config):
+    raise RuntimeError(f"no se pudo preparar {Path.home()}/algo")
+
+
+servidor.crear_aplicacion = rota
+from estudio.__main__ import main
+
+sys.exit(main())
+"""
+
+
+def test_si_el_arranque_falla_la_consola_no_muestra_la_traza_ni_la_carpeta_personal(arrancar):
+    from pathlib import Path
+
+    puerto = _puerto_libre()
+    proceso = arrancar(puerto, orden=["-c", _ARRANQUE_ROTO])
+    assert proceso.proceso.wait(timeout=30) == 1
+    salida = proceso.salida()
+    assert "Error inesperado (RuntimeError, en <string>:" in salida and "Vuelve a abrir la herramienta" in salida
+    assert "Traceback" not in salida and str(Path.home()) not in salida and "no se pudo preparar" not in salida
+    assert "Estudio de fotos abierto" not in salida
+    with pytest.raises(OSError):
+        socket.create_connection(("127.0.0.1", puerto), timeout=1).close()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="en Windows, parar un proceso desde fuera no le deja cerrar con orden")
+@pytest.mark.parametrize("senal", [signal.SIGINT, signal.SIGTERM], ids=["con Ctrl+C", "parado desde fuera"])
+def test_al_cerrar_no_quedan_fotos_en_la_carpeta_de_trabajo(arrancar, carpeta_datos, senal):
+    puerto = _puerto_libre()
+    proceso = arrancar(puerto)
+    proceso.esperar_linea("Estudio de fotos abierto en ")
+    trabajo = carpeta_datos / "estudio-fotos" / "trabajo"
+
+    with httpx.Client(base_url=f"http://127.0.0.1:{puerto}", trust_env=False, timeout=30) as cliente:
+        subida = cliente.post("/api/fotos", files=[("fotos", ("bolsa.jpg", ayudas.foto(1024, 1024), "image/jpeg"))])
+        assert subida.status_code == 200, subida.text
+        limite = time.monotonic() + 30
+        while not cliente.get("/api/estado").json()["fotos"][0].get("recorte"):
+            assert time.monotonic() < limite, "el recorte no terminó"
+            time.sleep(0.1)
+    assert [p for p in trabajo.rglob("*") if p.is_file()], "la foto subida debería estar en trabajo/ mientras se usa"
+
+    proceso.proceso.send_signal(senal)
+    codigo = proceso.proceso.wait(timeout=30)
+    salida = proceso.salida()
+    if senal == signal.SIGINT:  # como lo cierra el usuario
+        assert codigo == 0 and "Estudio de fotos cerrado." in salida
+    assert "Traceback" not in salida
+    assert [p for p in trabajo.rglob("*") if p.is_file()] == []  # ni la foto original ni sus vistas
+    assert list((carpeta_datos / "estudio-fotos" / "salidas").rglob("*_recorte.png"))  # los resultados sí se quedan

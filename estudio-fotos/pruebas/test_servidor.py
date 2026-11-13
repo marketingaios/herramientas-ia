@@ -227,7 +227,17 @@ def test_una_subida_que_pesa_demasiado_se_rechaza_antes_de_recibirla(servidor):
     assert "sube menos fotos a la vez".encode() in enorme
     sin_peso = _crudo(servidor, (cabeza + "Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n").encode())
     assert sin_peso.startswith(b"HTTP/1.1 411")
+    # Con los dos a la vez manda «por trozos» y el peso declarado sería mentira: tampoco se recibe (fotos y logo).
+    # La respuesta llega con solo las cabeceras: el servidor no espera a recibir ni un trozo.
+    for ruta in ("/api/fotos", "/api/ajustes/logo"):
+        trampa = _crudo(servidor, (
+            cabeza.replace("/api/fotos", ruta) + "Content-Length: 10\r\nTransfer-Encoding: chunked\r\n\r\n"
+        ).encode())
+        assert trampa.startswith(b"HTTP/1.1 411"), ruta
+        assert "La subida no dice cuánto pesa".encode() in trampa
     assert servidor.cliente.get("/api/estado").json()["fotos"] == []
+    assert servidor.cliente.get("/api/logo").status_code == 404
+    assert list(servidor.config.trabajo.glob("subidas/*")) == []  # sin restos de ninguna subida
 
 
 def test_quitar_una_foto_y_empezar_de_nuevo(servidor):
@@ -341,6 +351,32 @@ def test_ajustes_del_negocio(servidor):
     assert (mal.status_code, mal.json()) == (400, {"error": "El color debe tener la forma #RRGGBB, por ejemplo #1F3B2D."})
     otro = servidor.cliente.put("/api/ajustes", json={"modelo_escenas": "otro/modelo"})
     assert (otro.status_code, otro.json()) == (400, {"error": "Ese modelo de escenas no está en la lista."})
+
+
+@pytest.mark.parametrize("raro", [[], ["1:1"], {}, {"a": 1}])
+def test_una_lista_donde_va_un_texto_se_rechaza_con_su_mensaje_y_no_con_un_fallo_interno(servidor, raro):
+    """Una lista o un objeto donde va un texto o un número: un 400 con su mensaje, nunca un 500."""
+    def rechazada(respuesta, donde) -> None:
+        assert respuesta.status_code in (400, 422) and respuesta.json()["error"], (donde, respuesta.status_code, respuesta.text)
+        assert respuesta.json()["error"] != "Algo falló dentro de la herramienta. Inténtalo otra vez.", donde
+
+    for campo in ("calidad_recorte", "modelo_escenas", "tope_sesion_usd"):
+        rechazada(servidor.cliente.put("/api/ajustes", json={campo: raro}), campo)
+    for campo in ("nombre", "color_principal", "color_acento"):
+        rechazada(servidor.cliente.put("/api/ajustes", json={"negocio": {campo: raro}}), campo)
+    rechazada(servidor.cliente.put("/api/ajustes", json={"negocio": [raro]}), "negocio")
+    rechazada(servidor.cliente.put("/api/ajustes/clave", json={"clave": raro}), "clave")
+
+    (foto_id,) = [f["id"] for f in _subir(servidor, [("bolsa.jpg", ayudas.foto(1024, 1024))]).json()["fotos"]]
+    servidor.esperar("recorte")
+    bien = {"fotos": [foto_id], "escena": "mesa-madera", "formato": "1:1", "confirmado": True, "costo_estimado_usd": 0.04}
+    for ruta in ("/api/escenas/estimar", "/api/escenas"):
+        for campo in ("escena", "formato"):
+            rechazada(servidor.cliente.post(ruta, json={**bien, campo: raro}), (ruta, campo))
+        rechazada(servidor.cliente.post(ruta, json={**bien, "escena": "propia", "propia": raro}), (ruta, "propia"))
+    rechazada(servidor.cliente.post("/api/medidas", json={"fotos": [foto_id], "plataformas": {"a": raro}}), "plataformas")
+    rechazada(servidor.cliente.post("/api/medidas", json={"fotos": [raro], "plataformas": ["amazon"]}), "fotos")
+    assert servidor.cliente.get("/api/estado").status_code == 200  # y la herramienta sigue en pie
 
 
 def test_el_logo_del_negocio(servidor):

@@ -88,7 +88,7 @@ def aplicar(actuales: dict, cambios: object) -> dict:
         nuevos["calidad_recorte"] = cambios["calidad_recorte"]
 
     if "modelo_escenas" in cambios:
-        if cambios["modelo_escenas"] not in costos.IDS_MODELOS:
+        if not isinstance(cambios["modelo_escenas"], str) or cambios["modelo_escenas"] not in costos.IDS_MODELOS:
             raise ErrorAjustes("Ese modelo de escenas no está en la lista.")
         nuevos["modelo_escenas"] = cambios["modelo_escenas"]
 

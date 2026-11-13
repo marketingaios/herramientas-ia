@@ -167,6 +167,9 @@ def _lista(valor: object) -> list[str]:
 
 def _comprobar_peso(peticion: Request, maximo: int) -> None:
     """El tamaño de una subida se mira antes de recibirla."""
+    if "transfer-encoding" in peticion.headers:
+        # Enviada «por trozos», el peso declarado no manda y la subida se recibiría entera. La página nunca sube así.
+        raise ErrorPeticion(411)
     declarado = peticion.headers.get("content-length", "")
     if not declarado.isdigit():
         raise ErrorPeticion(411)
@@ -211,6 +214,7 @@ def crear_aplicacion(config: Config, estudio: Estudio | None = None) -> FastAPI:
         yield
         if propio:
             estudio.cerrar()
+            estudio.limpiar_trabajo()  # las fotos subidas no se quedan en `trabajo/` después de cerrar
 
     app = FastAPI(
         title=HERRAMIENTA, version=VERSION, docs_url=None, redoc_url=None, openapi_url=None, lifespan=vida,
