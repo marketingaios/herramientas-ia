@@ -21,7 +21,7 @@ commit.
       claro y sin rutas).
 - [x] **Paso 3 · Subidas**: tipo por contenido, HEIC, peso, lado corto, megapíxeles, foto dañada, nombre limpio.
       Prueba: `test_subidas.py` (cada mensaje del punto 5; el aviso por debajo de 1.000 px; nombres con rutas).
-- [ ] **Paso 4 · Fondo blanco y encuadre**: blanco 255, centrado, porcentaje, medida, JPEG sRGB, peso, regla de Amazon,
+- [x] **Paso 4 · Fondo blanco y encuadre**: blanco 255, centrado, porcentaje, medida, JPEG sRGB, peso, regla de Amazon,
       aviso de ampliación, nombres de archivo.
       Prueba: `test_encuadre.py` (porcentaje ±1 %, centro ±1 %, medida y peso de cada plataforma, todo el fondo en 255).
 - [ ] **Paso 5 · Recorte**: recortador con rembg y BiRefNet (nombre siempre explícito), recortador simulado, limpieza

@@ -46,8 +46,12 @@ def recorte(ancho: int, alto: int, caja: tuple[int, int, int, int], forma: str =
     return Image.fromarray(datos, "RGBA")
 
 
-def caja_no_blanca(imagen: Image.Image, umbral: int = 250) -> tuple[int, int, int, int]:
-    """El rectángulo que ocupa todo lo que no es (casi) blanco: así se mide el producto en un archivo exportado."""
+def caja_no_blanca(imagen: Image.Image, umbral: int = 225) -> tuple[int, int, int, int]:
+    """El rectángulo que ocupa lo que claramente no es blanco: así se mide el producto en un archivo exportado.
+
+    El umbral deja fuera el eco de la compresión JPEG, que mueve el blanco pegado al borde del producto unas
+    pocas unidades (de 255 a 250, por ejemplo) sin ser producto.
+    """
     datos = np.asarray(imagen.convert("RGB"))
     producto = (datos < umbral).any(axis=2)
     filas = np.flatnonzero(producto.any(axis=1))
