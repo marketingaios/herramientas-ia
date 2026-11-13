@@ -45,7 +45,7 @@ commit.
       `openrouter_key_limit` y con `openrouter_credits`; 402 en vuelo, con y sin `weight_exceeds_budget`; 403 con
       `content_policy_violation`; otro 403; 429 y reintentos agotados; 502; 503; 400; sin conexión; un texto de error
       engañoso no cambia el mensaje).
-- [ ] **Paso 10 · Costos**: modelos y costo de partida, estimación con la media real, tope de la sesión,
+- [x] **Paso 10 · Costos**: modelos y costo de partida, estimación con la media real, tope de la sesión,
       `gastos.jsonl`.
       Prueba: `test_costos.py` (estimación correcta; con el tope superado no se llama a OpenRouter; lo que queda en la
       clave; formato de los importes).
