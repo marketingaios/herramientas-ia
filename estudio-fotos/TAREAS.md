@@ -24,7 +24,7 @@ commit.
 - [x] **Paso 4 · Fondo blanco y encuadre**: blanco 255, centrado, porcentaje, medida, JPEG sRGB, peso, regla de Amazon,
       aviso de ampliación, nombres de archivo.
       Prueba: `test_encuadre.py` (porcentaje ±1 %, centro ±1 %, medida y peso de cada plataforma, todo el fondo en 255).
-- [ ] **Paso 5 · Recorte**: recortador con rembg y BiRefNet (nombre siempre explícito), recortador simulado, limpieza
+- [x] **Paso 5 · Recorte**: recortador con rembg y BiRefNet (nombre siempre explícito), recortador simulado, limpieza
       mínima de máscara, «sin producto», modelo según el computador.
       Prueba: `test_recorte.py` (simulado; elección del modelo; la limpieza no muerde; nunca `bria-rmbg`) y, con el
       modelo real, `test_modelo_real.py` (`-m modelo`: las 5 muestras, máscara entre el 5 % y el 95 %, el modelo queda

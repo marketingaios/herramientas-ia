@@ -12,6 +12,7 @@ dependencies = [
     "numpy==2.5.4",
     "rembg==2.0.87",
     "httpx==0.28.1",
+    "pymatting==1.1.16",
 ]
 
 # El recorte necesita onnxruntime. Por defecto se instala la versión para el procesador («cpu»).
