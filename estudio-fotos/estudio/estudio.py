@@ -20,8 +20,11 @@ from PIL import Image
 from . import HERRAMIENTA, VERSION, costos, descargas, equipo
 from . import ajustes as los_ajustes
 from . import clave as la_clave
+from . import escenas as las_escenas
 from .config import Config
 from .encuadre import Salida, exportar
+from .openrouter import MENSAJES as MENSAJES_OPENROUTER
+from .openrouter import Cliente, ErrorOpenRouter
 from .plataformas import ErrorPlataformas, Plataforma
 from .plataformas import cargar as cargar_plataformas
 from .recorte import (
@@ -35,7 +38,7 @@ from .recorte import (
     recortar,
 )
 from .registro import registro
-from .subidas import ErrorFoto, abrir_normalizada, limpiar_nombre, numero, validar
+from .subidas import MAX_FOTOS, MAX_MB, ErrorFoto, abrir_normalizada, limpiar_nombre, numero, validar
 
 LADO_VISTA = 1400  # lado mayor de las vistas previas de la página
 EXTENSIONES = {"jpeg": "jpg", "png": "png", "webp": "webp"}
@@ -44,6 +47,9 @@ MENSAJE_RECORTE_FALLIDO = "No se pudo recortar esta foto. Quítala y vuelve a su
 MENSAJE_MODELO_NO_CARGA = (
     "No se pudo preparar el modelo de recorte. Cierra otros programas para liberar memoria y vuelve a intentarlo."
 )
+MENSAJE_SIN_CONFIRMAR = "Antes de gastar hay que ver el costo estimado y confirmarlo."
+MENSAJE_ESCENA_DANADA = "OpenRouter devolvió una imagen que no se pudo guardar. Esa escena sí se cobró."
+MENSAJE_ESCENA_FALLIDA = "No se pudo preparar esta escena. Inténtalo otra vez."
 
 
 class ErrorEstudio(Exception):
@@ -168,8 +174,14 @@ class EstadoModelo:
 
 
 class Estudio:
-    def __init__(self, config: Config, fabrica_recortador: Callable[[str], Recortador] | None = None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        fabrica_recortador: Callable[[str], Recortador] | None = None,
+        dormir: Callable[[float], None] = time.sleep,
+    ) -> None:
         self.config = config
+        self._dormir = dormir  # cómo se espera cuando OpenRouter pide esperar (las pruebas no esperan de verdad)
         self.config.preparar_carpetas()
         self._candado = threading.RLock()
         self._hay_trabajo = threading.Condition(self._candado)
@@ -187,6 +199,8 @@ class Estudio:
         self.ajustes = los_ajustes.cargar(config.ajustes)
         self.calidad_recorte = self.ajustes["calidad_recorte"]
         self.aviso_puerto: str | None = None
+        # Lo gastado en escenas desde que arrancó la herramienta: contra esto se compara el tope de la sesión.
+        self.gasto_sesion = 0.0
         self.sesion = ""
         self._nueva_sesion()
         self._anunciar_modelo()
@@ -579,6 +593,206 @@ class Estudio:
             trabajo.terminar()
             self._hay_trabajo.notify_all()
 
+    # --- Escenas con IA ------------------------------------------------------------------------------------------
+
+    def _cliente(self) -> Cliente:
+        """El cliente de OpenRouter. La clave se lee del archivo en cada llamada."""
+        return Cliente(self.config.openrouter_url, self.clave, dormir=self._dormir)
+
+    def probar_clave(self) -> str:
+        """El botón Probar: «Conexión correcta · límite 2,00 $ · usado 0,12 $». No gasta."""
+        try:
+            return self._cliente().probar().texto()
+        except ErrorOpenRouter as error:
+            raise ErrorEstudio(str(error), 409)
+
+    def _pedido_escenas(self, ids_fotos: object, escena: object, formato: object, propia: object):
+        """Lo que se va a pedir, ya comprobado: las fotos, el pedido y la estimación. No llama a internet."""
+        try:
+            pedido = las_escenas.preparar_pedido(escena, formato, propia, self.ajustes["negocio"])
+        except las_escenas.ErrorEscena as error:
+            raise ErrorEstudio(str(error))
+        ids = ids_fotos if isinstance(ids_fotos, list) else []
+        with self._candado:
+            fotos = [
+                self.fotos[i] for i in dict.fromkeys(i for i in ids if isinstance(i, str))
+                if i in self.fotos and self.fotos[i].estado == "lista"
+            ]
+            modelo = self.ajustes["modelo_escenas"]
+        if not fotos:
+            raise ErrorEstudio("Elige al menos una foto ya recortada.")
+        return fotos, pedido, costos.estimar(self.config.gastos, modelo, len(fotos))
+
+    def estimar_escenas(self, ids_fotos: object, escena: object, formato: object, propia: object = None) -> dict:
+        """El costo estimado, para mostrarlo antes de gastar. No gasta ni llama a internet."""
+        fotos, _pedido, estimacion = self._pedido_escenas(ids_fotos, escena, formato, propia)
+        mensaje = None
+        if self.clave() is None:
+            mensaje = MENSAJES_OPENROUTER["sin_clave"]
+        else:
+            with self._candado:
+                tope, gastado = self.ajustes["tope_sesion_usd"], self.gasto_sesion
+            try:
+                costos.comprobar_tope(estimacion.total, tope, gastado)
+            except costos.SinPresupuesto as error:
+                mensaje = str(error)
+        return {
+            "imagenes": estimacion.imagenes,
+            "modelo": estimacion.modelo,
+            "costo_estimado_usd": estimacion.total,
+            "costo_estimado": costos.dolares(estimacion.total),
+            "texto": estimacion.texto(),
+            "se_puede": mensaje is None,
+            "mensaje": mensaje,
+        }
+
+    def generar_escenas(
+        self,
+        ids_fotos: object,
+        escena: object,
+        formato: object,
+        propia: object = None,
+        *,
+        confirmado: object = False,
+        costo_visto: object = None,
+    ) -> dict:
+        """Empieza el lote de escenas. Gasta dinero: solo con la confirmación y con el costo que vio el usuario."""
+        if confirmado is not True:
+            raise ErrorEstudio(MENSAJE_SIN_CONFIRMAR)
+        fotos, pedido, estimacion = self._pedido_escenas(ids_fotos, escena, formato, propia)
+        visto = costo_visto if isinstance(costo_visto, (int, float)) and not isinstance(costo_visto, bool) else None
+        if visto is None or abs(visto - estimacion.total) > 0.0005:
+            raise ErrorEstudio(
+                f"El costo estimado ahora es {costos.dolares(estimacion.total)}. Míralo y confírmalo de nuevo.", 409
+            )
+        if self.clave() is None:
+            raise ErrorEstudio(MENSAJES_OPENROUTER["sin_clave"])
+        with self._candado:
+            if self.trabajos["escenas"].estado == "trabajando":
+                raise ErrorEstudio("Ya se están generando escenas: espera a que terminen.", 409)
+            tope, gastado = self.ajustes["tope_sesion_usd"], self.gasto_sesion
+        cliente = self._cliente()
+        try:
+            # Primero el tope de la sesión (si se supera, no se llama a OpenRouter); después, lo que queda en la clave.
+            costos.antes_de_gastar(estimacion.total, tope, gastado, cliente.probar)
+        except (costos.SinPresupuesto, ErrorOpenRouter) as error:
+            raise ErrorEstudio(str(error), 409)
+
+        with self._hay_trabajo:
+            trabajo = self.trabajos["escenas"]
+            if trabajo.estado == "trabajando":
+                raise ErrorEstudio("Ya se están generando escenas: espera a que terminen.", 409)
+            trabajo.empezar(total=len(fotos))
+            trabajo.extra = self._costos_del_lote(estimacion.total, 0.0, 0, False)
+            carpeta = self.carpeta_salidas / "escenas"
+        threading.Thread(
+            target=self._hacer_escenas, args=(fotos, pedido, estimacion, cliente, carpeta), name="escenas", daemon=True
+        ).start()
+        return {"imagenes": len(fotos), "costo_estimado": costos.dolares(estimacion.total)}
+
+    @staticmethod
+    def _costos_del_lote(estimado: float, real: float, hechas: int, sin_informar: bool) -> dict:
+        return {
+            "hechas": hechas,
+            "costo_estimado_usd": estimado,
+            "costo_estimado": costos.dolares(estimado),
+            "costo_real_usd": round(real, 6),
+            "costo_real": costos.dolares(real),
+            "costo_sin_informar": sin_informar,  # OpenRouter no dijo el costo de alguna escena: se cuenta el estimado
+        }
+
+    def _hacer_escenas(self, fotos: list[Foto], pedido, estimacion, cliente: Cliente, carpeta: Path) -> None:
+        trabajo = self.trabajos["escenas"]
+        real, hechas, sin_informar, detenido = 0.0, 0, False, None
+
+        def al_esperar(mensaje: str) -> None:
+            with self._candado:
+                trabajo.mensaje = mensaje
+
+        for foto in fotos:
+            with self._candado:
+                trabajo.empezar_archivo(f"{foto.nombre}_escena_{pedido.escena}")
+                tope, gastado = self.ajustes["tope_sesion_usd"], self.gasto_sesion
+            error, escena = None, None
+            try:
+                # El tope se vuelve a mirar antes de cada imagen: los costos reales pueden ir por encima del estimado.
+                costos.comprobar_tope(estimacion.por_imagen, tope, gastado)
+                with Image.open(foto.recorte) as abierto:
+                    abierto.load()
+                    referencia = las_escenas.imagen_referencia(abierto.convert("RGBA"))
+                imagen = cliente.generar(estimacion.modelo, pedido.texto, pedido.formato, referencia, al_esperar)
+            except costos.SinPresupuesto as fallo:
+                error = detenido = str(fallo)
+            except ErrorOpenRouter as fallo:
+                error = str(fallo)
+                if fallo.posible_cobro:
+                    with self._candado:
+                        self.gasto_sesion += estimacion.por_imagen  # no sabemos si se cobró: cuenta para el tope
+                if fallo.detiene_el_lote:
+                    detenido = error
+            except Exception as fallo:
+                registro.error("No se pudo preparar una escena (%s)", type(fallo).__name__)
+                error = MENSAJE_ESCENA_FALLIDA
+            else:
+                # Desde aquí la escena ya está cobrada: el gasto se anota pase lo que pase al guardarla.
+                costo = imagen.costo
+                contado = estimacion.por_imagen if costo is None else costo
+                sin_informar = sin_informar or costo is None
+                try:
+                    costos.anotar_gasto(self.config.gastos, estimacion.modelo, estimacion.por_imagen, costo)
+                except OSError as fallo:
+                    registro.error("No se pudo anotar un gasto (%s)", type(fallo).__name__)
+                real += contado
+                with self._candado:
+                    self.gasto_sesion += contado
+                try:
+                    escena = las_escenas.guardar(
+                        imagen.datos, pedido, foto.nombre, carpeta,
+                        modelo=estimacion.modelo, costo=costo, costo_estimado=estimacion.por_imagen,
+                    )
+                    hechas += 1
+                except Exception as fallo:
+                    registro.error("No se pudo guardar una escena (%s)", type(fallo).__name__)
+                    error = MENSAJE_ESCENA_DANADA
+
+            with self._hay_trabajo:
+                if escena is not None:
+                    foto.escenas.append(escena)
+                trabajo.terminar_archivo(error)
+                trabajo.extra = self._costos_del_lote(estimacion.total, real, hechas, sin_informar)
+            if detenido:
+                break
+
+        with self._hay_trabajo:
+            trabajo.terminar()
+            if detenido:
+                trabajo.mensaje = detenido
+                trabajo.extra["detenido"] = True
+            self._hay_trabajo.notify_all()
+
+    def opciones(self) -> dict:
+        """Lo que la página necesita para pintar sus listas: plataformas, escenas, formatos y modelos."""
+        try:
+            plataformas, error = [p.publica() for p in self.plataformas()], None
+        except ErrorEstudio as fallo:
+            plataformas, error = [], str(fallo)
+        return {
+            "plataformas": plataformas,
+            "error_plataformas": error,
+            "escenas": las_escenas.escenas_publicas(),
+            "escena_propia": {"id": las_escenas.PROPIA, "maximo": las_escenas.PROPIA_MAXIMO},
+            "formatos": list(las_escenas.FORMATOS),
+            "marca_escenas": las_escenas.MARCA_PAGINA,
+            "nota_escenas": las_escenas.NOTA_PAGINA,
+            "modelos_escenas": costos.modelos_publicos(),
+            "calidades": [
+                {"id": "automatica", "nombre": "Automática (recomendada)"},
+                {"id": "maxima", "nombre": "Máxima"},
+                {"id": "rapida", "nombre": "Rápida"},
+            ],
+            "subidas": {"max_fotos": MAX_FOTOS, "max_mb": MAX_MB},
+        }
+
     # --- Archivos de resultados y descarga -----------------------------------------------------------------------
 
     def archivo(self, foto_id: str, nombre: str) -> Path:
@@ -649,6 +863,31 @@ class Estudio:
             "segundos": None if foto.segundos is None else round(foto.segundos, 1),
             "recorte": recorte,
             "salidas": [self._salida_publica(foto, salida) for salida in self._salidas_en_orden(foto)],
+            "escenas": [self._escena_publica(foto, escena) for escena in foto.escenas],
+        }
+
+    @staticmethod
+    def _escena_publica(foto: Foto, escena) -> dict:
+        return {
+            "archivo": escena.archivo,
+            "escena": escena.nombre_escena,
+            "formato": escena.formato,
+            "medida": f"{escena.ancho}×{escena.alto}",
+            "peso": escena.peso,
+            "peso_texto": descargas.texto_bytes(escena.peso),
+            "costo": "sin informar" if escena.costo is None else costos.dolares(escena.costo),
+            "marca": las_escenas.MARCA_PAGINA,
+            "aviso": escena.aviso,
+            "url": f"/api/archivos/{foto.id}/{escena.archivo}",
+        }
+
+    def _gasto_publico(self) -> dict:
+        tope = self.ajustes["tope_sesion_usd"]
+        return {
+            "sesion_usd": round(self.gasto_sesion, 6),
+            "sesion": costos.dolares(self.gasto_sesion),
+            "tope": costos.dolares(tope),
+            "queda": costos.dolares(max(0.0, tope - self.gasto_sesion)),
         }
 
     def _salidas_en_orden(self, foto: Foto) -> list[Salida]:
@@ -684,6 +923,7 @@ class Estudio:
                     "tope_texto": costos.dolares(self.ajustes["tope_sesion_usd"]),
                 },
                 "clave": self._clave_publica(),
+                "gasto": self._gasto_publico(),
                 "modelo": self.modelo.publico(),
                 "trabajos": {tipo: trabajo.publico() for tipo, trabajo in self.trabajos.items()},
                 "fotos": [self._foto_publica(foto) for foto in self.fotos.values()],
@@ -693,6 +933,7 @@ class Estudio:
 def _guardar_vista(imagen: Image.Image, destino: Path, formato: str) -> None:
     """Una copia pequeña para la página (el original no se toca)."""
     vista = imagen.copy()
+    vista.info = {}  # sin los metadatos de la foto original
     vista.thumbnail((LADO_VISTA, LADO_VISTA), Image.Resampling.LANCZOS)
     if formato == "JPEG":
         vista.convert("RGB").save(destino, "JPEG", quality=85)

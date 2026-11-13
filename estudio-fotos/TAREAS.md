@@ -49,7 +49,7 @@ commit.
       `gastos.jsonl`.
       Prueba: `test_costos.py` (estimación correcta; con el tope superado no se llama a OpenRouter; lo que queda en la
       clave; formato de los importes).
-- [ ] **Paso 11 · Escenas**: texto fijo, las 5 escenas y la propia, colores de la marca, imagen de referencia, formato
+- [x] **Paso 11 · Escenas**: texto fijo, las 5 escenas y la propia, colores de la marca, imagen de referencia, formato
       exacto sin ampliar ni deformar, marca IPTC, lote con costo real.
       Prueba: `test_escenas.py` (la marca IPTC está y se conserva al cambiar de medida).
 - [ ] **Paso 12 · Servidor**: rutas de la API, estáticos, `Host`/`Origin`, CSP, errores en español, sin `/docs`.
