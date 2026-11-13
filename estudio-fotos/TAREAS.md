@@ -64,7 +64,7 @@ commit.
 - [x] **Paso 14 · Página · Fotos**: subir y arrastrar, errores por archivo, avisos «Calidad máxima» y «Modo rápido…»,
       descarga del modelo, barra de avance, deslizador antes/después sobre fondo de cuadros, firma en el pie.
       Prueba: `test_pagina.py` (nada de internet salvo el enlace de la firma) y recorrido 1 de `test_e2e.py`.
-- [ ] **Paso 15 · Página · Medidas y Resultados**: selector de plataformas, generar, cuadrícula por foto, avisos por
+- [x] **Paso 15 · Página · Medidas y Resultados**: selector de plataformas, generar, cuadrícula por foto, avisos por
       archivo, descarga de todo o por plataforma.
       Prueba: recorrido 2 de `test_e2e.py` (Mercado Libre, Amazon e Instagram; ZIP comprobado).
 - [ ] **Paso 16 · Página · Ajustes**: clave (••••, Probar, borrar), marca del negocio, calidad del recorte, modelo de

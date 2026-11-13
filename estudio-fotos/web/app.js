@@ -59,8 +59,10 @@
   // --- El estado: se consulta cada poco y se vuelve a pintar ------------------------------------------------------
 
   let estado = null;
+  let opciones = null; // plataformas, escenas, formatos y modelos: se piden una vez
   let temporizador = null;
   const pintores = [];
+  const alCambiarSeleccion = []; // lo que hay que repintar cuando se marca o desmarca una foto
 
   function hayTrabajo() {
     if (!estado) return false;
@@ -233,6 +235,13 @@
   // --- Zona Fotos: cada foto, con su antes y después --------------------------------------------------------------
 
   const tarjetas = new Map(); // id de la foto → lo que hay pintado
+  const sinMarcar = new Set(); // las fotos que el usuario desmarcó: no entran en las medidas ni en las escenas
+
+  /** Las fotos ya recortadas que siguen marcadas. */
+  function fotosElegidas() {
+    if (!estado) return [];
+    return estado.fotos.filter((foto) => foto.estado === "lista" && !sinMarcar.has(foto.id)).map((foto) => foto.id);
+  }
 
   const ESTADOS = { en_cola: "En cola", recortando: "Recortando…" };
 
@@ -279,10 +288,22 @@
     });
     pie.append(textos, quitar);
 
+    const usar = crear("label", "foto-usar");
+    const casilla = crear("input");
+    casilla.type = "checkbox";
+    casilla.checked = true;
+    casilla.disabled = true;
+    casilla.addEventListener("change", () => {
+      if (casilla.checked) sinMarcar.delete(foto.id);
+      else sinMarcar.add(foto.id);
+      for (const alCambiar of alCambiarSeleccion) alCambiar();
+    });
+    usar.append(casilla, crear("span", null, "Usar esta foto"));
+
     const aviso = crear("p", "nota nota-aviso");
     const fallo = crear("p", "nota nota-error");
-    elemento.append(comparador, pie, aviso, fallo);
-    return { elemento, comparador, despues, espera, situacion, aviso, fallo, estado: null };
+    elemento.append(comparador, pie, usar, aviso, fallo);
+    return { elemento, comparador, despues, espera, situacion, usar, casilla, aviso, fallo, estado: null };
   }
 
   function actualizarTarjeta(tarjeta, foto) {
@@ -294,6 +315,8 @@
       mostrar(tarjeta.despues, lista);
       tarjeta.espera.textContent = ESTADOS[foto.estado] || "";
       mostrar(tarjeta.espera, Boolean(ESTADOS[foto.estado]));
+      tarjeta.casilla.disabled = !lista;
+      mostrar(tarjeta.usar, lista);
     }
     let situacion = `${foto.ancho}×${foto.alto} px`;
     if (foto.estado === "lista" && foto.segundos !== null) {
@@ -313,6 +336,7 @@
       if (!vivos.has(id)) {
         tarjeta.elemento.remove();
         tarjetas.delete(id);
+        sinMarcar.delete(id);
       }
     }
     for (const foto of actual.fotos) {
@@ -337,8 +361,197 @@
     refrescar();
   });
 
+  // --- Zona Fotos: fondo blanco y medidas -------------------------------------------------------------------------
+
+  const casillasPlataforma = new Map(); // id de la plataforma → su casilla
+
+  function plataformasElegidas() {
+    return [...casillasPlataforma].filter(([, casilla]) => casilla.checked).map(([id]) => id);
+  }
+
+  function pintarPlataformas() {
+    const lista = $("lista-plataformas");
+    casillasPlataforma.clear();
+    lista.replaceChildren();
+    $("error-plataformas").textContent = opciones.error_plataformas || "";
+    mostrar($("error-plataformas"), Boolean(opciones.error_plataformas));
+    for (const plataforma of opciones.plataformas) {
+      const elemento = crear("li");
+      const etiqueta = crear("label", "plataforma");
+      const casilla = crear("input");
+      casilla.type = "checkbox";
+      casilla.checked = true;
+      casilla.value = plataforma.id;
+      casilla.addEventListener("change", pintarResumenMedidas);
+      casillasPlataforma.set(plataforma.id, casilla);
+      const textos = crear("span");
+      textos.append(
+        crear("span", "plataforma-nombre", plataforma.nombre),
+        crear(
+          "span", "plataforma-medida",
+          `${plataforma.medida} · producto al ${plataforma.porcentaje} % · ${plataforma.peso_maximo}`,
+        ),
+        crear("span", "plataforma-dice", plataforma.dice),
+      );
+      etiqueta.append(casilla, textos);
+      elemento.append(etiqueta);
+      lista.append(elemento);
+    }
+    pintarResumenMedidas();
+  }
+
+  function pintarResumenMedidas() {
+    if (!estado || !opciones) return;
+    const fotos = fotosElegidas().length;
+    const plataformas = plataformasElegidas().length;
+    const trabajando = estado.trabajos.medidas.estado === "trabajando";
+    $("generar-medidas").disabled = trabajando || !fotos || !plataformas;
+    let resumen = "";
+    if (!fotos) resumen = "Marca al menos una foto ya recortada.";
+    else if (!plataformas) resumen = "Elige al menos una plataforma.";
+    else {
+      const total = fotos * plataformas;
+      resumen = `${fotos} ${fotos === 1 ? "foto" : "fotos"} × ${plataformas} ${plataformas === 1 ? "plataforma" : "plataformas"} = ${total} ${total === 1 ? "archivo" : "archivos"}`;
+    }
+    $("resumen-medidas").textContent = resumen;
+  }
+  alCambiarSeleccion.push(pintarResumenMedidas);
+
+  for (const [boton, marcar] of [["plataformas-todas", true], ["plataformas-ninguna", false]]) {
+    $(boton).addEventListener("click", () => {
+      for (const casilla of casillasPlataforma.values()) casilla.checked = marcar;
+      pintarResumenMedidas();
+    });
+  }
+
+  let medidasPedidas = false; // para decir «listo» solo de un lote pedido desde esta página
+
+  $("generar-medidas").addEventListener("click", async () => {
+    mostrar($("error-medidas"), false);
+    mostrar($("medidas-listas"), false);
+    $("generar-medidas").disabled = true;
+    try {
+      await pedir("POST", "/api/medidas", { fotos: fotosElegidas(), plataformas: plataformasElegidas() });
+      medidasPedidas = true;
+    } catch (error) {
+      $("error-medidas").textContent = error.message;
+      mostrar($("error-medidas"), true);
+    }
+    refrescar();
+  });
+
+  $("ver-resultados").addEventListener("click", () => {
+    irA("resultados");
+    window.scrollTo(0, 0);
+  });
+
+  pintores.push((actual) => {
+    const trabajo = actual.trabajos.medidas;
+    mostrar($("tarjeta-medidas"), actual.fotos.some((foto) => foto.estado === "lista"));
+    pintarAvance(trabajo, { caja: "avance-medidas", barra: "barra-medidas", texto: "texto-medidas", errores: "errores-medidas" });
+    const listo = medidasPedidas && trabajo.estado === "terminado";
+    if (listo) {
+      const hechos = trabajo.total - trabajo.errores.length;
+      $("texto-medidas-listas").textContent =
+        `Listo: ${hechos} ${hechos === 1 ? "archivo creado" : "archivos creados"}. Míralos y descárgalos en Resultados.`;
+    }
+    mostrar($("medidas-listas"), listo);
+    pintarResumenMedidas();
+  });
+
+  // --- Zona Resultados: una cuadrícula por foto y las descargas ---------------------------------------------------
+
+  let resultadosPintados = "";
+
+  function crearResultado({ titulo, archivo, datos, url, avisos, cuadros, marca }) {
+    const elemento = crear("li", "resultado");
+    const marco = crear("a", cuadros ? "resultado-imagen cuadros" : "resultado-imagen");
+    marco.href = url;
+    marco.target = "_blank";
+    marco.rel = "noopener";
+    const imagen = crear("img");
+    imagen.loading = "lazy";
+    imagen.decoding = "async";
+    imagen.alt = `${titulo}: ${archivo}`;
+    imagen.src = url;
+    marco.append(imagen);
+    elemento.append(marco, crear("p", "resultado-titulo", titulo));
+    if (marca) elemento.append(crear("p", "chip", marca));
+    elemento.append(crear("p", "resultado-archivo", archivo), crear("p", "resultado-datos", datos));
+    for (const aviso of avisos) elemento.append(crear("p", "nota nota-aviso", aviso));
+    const descargar = crear("a", "boton boton-enlace", "Descargar");
+    descargar.href = url;
+    descargar.download = archivo;
+    elemento.append(descargar);
+    return elemento;
+  }
+
+  function botonDescarga(texto, plataforma) {
+    const boton = crear("a", plataforma ? "boton" : "boton boton-principal", texto);
+    boton.href = plataforma ? `/api/descargar?plataforma=${encodeURIComponent(plataforma)}` : "/api/descargar";
+    boton.download = "";
+    if (plataforma) boton.dataset.plataforma = plataforma;
+    return boton;
+  }
+
+  pintores.push((actual) => {
+    const conResultados = actual.fotos.filter((foto) => foto.recorte);
+    // Solo se vuelve a pintar si cambió algún archivo (así las imágenes no parpadean en cada consulta).
+    const huella = JSON.stringify(conResultados.map((foto) => [
+      foto.id, foto.recorte.archivo, foto.salidas.map((s) => [s.archivo, s.peso]), (foto.escenas || []).map((e) => e.archivo),
+    ]));
+    if (huella === resultadosPintados) return;
+    resultadosPintados = huella;
+
+    mostrar($("sin-resultados"), conResultados.length === 0);
+    mostrar($("descargas"), conResultados.length > 0);
+
+    const bloques = conResultados.map((foto) => {
+      const bloque = crear("div", "tarjeta resultado-foto");
+      bloque.dataset.id = foto.id;
+      bloque.append(crear("h3", null, foto.archivo));
+      const lista = crear("ul", "resultado-fotos");
+      lista.append(crearResultado({
+        titulo: "Recorte",
+        archivo: foto.recorte.archivo,
+        datos: `PNG con transparencia · ${foto.recorte.medida} · ${foto.recorte.peso_texto}`,
+        url: foto.recorte.url,
+        avisos: [],
+        cuadros: true,
+      }));
+      for (const salida of foto.salidas) {
+        lista.append(crearResultado({
+          titulo: salida.nombre_plataforma,
+          archivo: salida.archivo,
+          datos: `${salida.medida} · ${salida.peso_texto} · producto al ${salida.porcentaje} %`,
+          url: salida.url,
+          avisos: salida.avisos,
+        }));
+      }
+      bloque.append(lista);
+      return bloque;
+    });
+    $("lista-resultados").replaceChildren(...bloques);
+
+    const botones = [botonDescarga("Descargar todo (ZIP)", null)];
+    const nombres = new Map();
+    for (const foto of conResultados) for (const salida of foto.salidas) nombres.set(salida.plataforma, salida.nombre_plataforma);
+    for (const [id, nombre] of nombres) botones.push(botonDescarga(`Solo ${nombre}`, id));
+    if (nombres.size > 0) botones.push(botonDescarga("Solo los recortes", "recortes"));
+    $("botones-descarga").replaceChildren(...botones);
+  });
+
   // --- Arranque ---------------------------------------------------------------------------------------------------
 
+  async function cargarOpciones() {
+    try {
+      opciones = await pedir("GET", "/api/opciones");
+      pintarPlataformas();
+    } catch (error) {
+      setTimeout(cargarOpciones, 2000);
+    }
+  }
+
   irA(location.hash.slice(1));
-  refrescar();
+  refrescar().then(cargarOpciones);
 })();

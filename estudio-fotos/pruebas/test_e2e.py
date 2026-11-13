@@ -10,13 +10,18 @@ Los recorridos van en orden y comparten la misma página, como una sesión de us
 
 from __future__ import annotations
 
+import csv
+import io
 import os
 import re
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from PIL import Image
 
+import ayudas
 from conftest import MUESTRAS
 
 pytestmark = pytest.mark.e2e
@@ -137,3 +142,123 @@ def test_1_subir_las_cinco_muestras_y_ver_los_cinco_recortes(pagina, entorno):
     primera.locator(".deslizador").evaluate("d => { d.value = '80'; d.dispatchEvent(new Event('input', {bubbles: true})); }")
     assert primera.locator(".comparador").evaluate("caja => getComputedStyle(caja).getPropertyValue('--corte').trim()") == "80%"
     _captura(pagina, "1-recortes")
+
+
+def _descargar(pagina, boton) -> zipfile.ZipFile:
+    """Pulsa un botón de descarga y abre el ZIP que baja el navegador."""
+    with pagina.expect_download() as descarga:
+        boton.click()
+    ruta = descarga.value.path()
+    assert descarga.value.suggested_filename.startswith("estudio-fotos_") and descarga.value.suggested_filename.endswith(".zip")
+    return zipfile.ZipFile(ruta)
+
+
+def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
+    from playwright.sync_api import expect
+
+    fotos = [ruta.stem for ruta in sorted(MUESTRAS.glob("*.jpg"))]
+
+    # Elige Mercado Libre, Amazon e Instagram.
+    expect(pagina.locator("#lista-plataformas .plataforma")).to_have_count(8)
+    expect(pagina.locator("#resumen-medidas")).to_have_text("5 fotos × 8 plataformas = 40 archivos")
+    pagina.click("#plataformas-ninguna")
+    expect(pagina.locator("#generar-medidas")).to_be_disabled()
+    for nombre in ("Mercado Libre", "Amazon", "Instagram (feed)"):
+        pagina.locator("#lista-plataformas .plataforma", has=pagina.get_by_text(nombre, exact=True)).locator("input").check()
+    expect(pagina.locator("#resumen-medidas")).to_have_text("5 fotos × 3 plataformas = 15 archivos")
+    _captura(pagina, "2-plataformas")
+
+    # Genera, con su barra de avance.
+    pagina.click("#generar-medidas")
+    expect(pagina.locator("#texto-medidas")).to_contain_text("15 de 15 · listo", timeout=120_000)
+    expect(pagina.locator("#medidas-listas")).to_contain_text("Listo: 15 archivos creados")
+    expect(pagina.locator("#errores-medidas")).to_be_hidden()
+
+    # Resultados: una cuadrícula por foto, con el recorte y las tres medidas.
+    pagina.click("#ver-resultados")
+    expect(pagina.locator("#zona-resultados")).to_be_visible()
+    expect(pagina.locator("#zona-fotos")).to_be_hidden()
+    bloques = pagina.locator("#lista-resultados .resultado-foto")
+    expect(bloques).to_have_count(5)
+    for indice, foto in enumerate(fotos):
+        bloque = bloques.nth(indice)
+        expect(bloque.locator("h3")).to_have_text(f"{foto}.jpg")
+        expect(bloque.locator(".resultado-titulo")).to_have_text(["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)"])
+        archivos = bloque.locator(".resultado-archivo").all_inner_texts()
+        assert archivos[0] == f"{foto}_recorte.png"
+        assert archivos[1] == f"{foto}_mercadolibre_1200x1200.jpg" and archivos[3] == f"{foto}_instagram_1080x1350.jpg"
+        assert re.fullmatch(rf"{foto}_amazon_(\d+)x\1\.jpg", archivos[2])
+        expect(bloque.locator(".resultado-datos").nth(1)).to_contain_text("1200×1200")
+        expect(bloque.locator(".resultado-datos").nth(1)).to_contain_text("producto al 95 %")
+    # Las muestras son pequeñas. Para Amazon la medida baja hasta 1000×1000; donde aun así hay que ampliar el
+    # producto, el archivo lleva su aviso (y donde no hace falta, no).
+    avisos = pagina.locator("#lista-resultados .nota-aviso").all_inner_texts()
+    de_amazon = [a for a in avisos if "Amazon pide no agrandar las fotos pequeñas" in a]
+    en_el_minimo = [a for a in pagina.locator("#lista-resultados .resultado-archivo").all_inner_texts() if a.endswith("_amazon_1000x1000.jpg")]
+    assert len(de_amazon) == len(en_el_minimo) >= 1, avisos
+    assert all(re.fullmatch(r"ampliada ×\d,\d+: Amazon pide no agrandar las fotos pequeñas", a) for a in de_amazon), de_amazon
+    pagina.wait_for_function(
+        "() => [...document.querySelectorAll('#lista-resultados img')].slice(0, 4).every(img => img.complete && img.naturalWidth > 0)"
+    )
+    _captura(pagina, "2-resultados")
+
+    # Descarga el ZIP con todo y comprueba los archivos.
+    with _descargar(pagina, pagina.get_by_role("link", name="Descargar todo (ZIP)")) as archivo_zip:
+        assert archivo_zip.testzip() is None
+        nombres = sorted(archivo_zip.namelist())
+        filas = list(csv.DictReader(io.StringIO(archivo_zip.read("resumen.csv").decode("utf-8-sig"))))
+        imagenes = {nombre: archivo_zip.read(nombre) for nombre in nombres if nombre != "resumen.csv"}
+
+    assert len(nombres) == 21 and "resumen.csv" in nombres
+    assert sorted(n for n in nombres if n.startswith("recortes/")) == [f"recortes/{foto}_recorte.png" for foto in fotos]
+    assert sorted(n for n in nombres if n.startswith("mercadolibre/")) == [f"mercadolibre/{foto}_mercadolibre_1200x1200.jpg" for foto in fotos]
+    assert sorted(n for n in nombres if n.startswith("instagram/")) == [f"instagram/{foto}_instagram_1080x1350.jpg" for foto in fotos]
+    assert len([n for n in nombres if n.startswith("amazon/")]) == 5
+
+    assert list(filas[0]) == ["archivo", "plataforma", "medida", "peso_kb", "porcentaje_producto", "avisos"]
+    assert len(filas) == 20 and {fila["archivo"] for fila in filas} == {nombre.split("/")[1] for nombre in imagenes}
+    esperado = {"mercadolibre": (95.0, 10_000), "amazon": (85.0, None), "instagram": (80.0, None)}
+    for nombre, datos in imagenes.items():
+        carpeta, archivo = nombre.split("/")
+        fila = next(fila for fila in filas if fila["archivo"] == archivo)
+        with Image.open(io.BytesIO(datos)) as imagen:
+            imagen.load()
+            assert f"{imagen.width}x{imagen.height}" == fila["medida"]
+            assert carpeta == "recortes" or archivo.endswith(f"_{carpeta}_{fila['medida']}.jpg")  # <foto>_<plataforma>_<ancho>x<alto>.jpg
+            assert int(fila["peso_kb"]) == -(-len(datos) // 1000)
+            if carpeta == "recortes":
+                assert imagen.format == "PNG" and imagen.mode == "RGBA"
+                continue
+            assert imagen.format == "JPEG" and imagen.mode == "RGB" and imagen.info.get("icc_profile")
+            # Fondo blanco puro en las cuatro esquinas y en todo el borde.
+            ancho, alto = imagen.size
+            for punto in ((0, 0), (ancho - 1, 0), (0, alto - 1), (ancho - 1, alto - 1), (ancho // 2, 0), (0, alto // 2)):
+                assert imagen.getpixel(punto) == (255, 255, 255), (nombre, punto)
+            porcentaje, peso_maximo_kb = esperado[carpeta]
+            assert abs(float(fila["porcentaje_producto"].replace(",", ".")) - porcentaje) <= 1.0, (nombre, fila)
+            if peso_maximo_kb:
+                assert int(fila["peso_kb"]) <= peso_maximo_kb
+            if carpeta == "amazon":
+                assert ancho == alto and 1000 <= ancho <= 2000
+                # Sin ampliar: por encima del mínimo no hay aviso; en el mínimo, lo hay si el producto se amplió.
+                assert ("Amazon pide no agrandar" in fila["avisos"]) == (ancho == 1000), fila
+            else:
+                assert "Amazon" not in fila["avisos"]
+            if archivo.startswith("bolsa_mesa"):
+                # Medido en la propia foto (una bolsa de papel oscuro sobre blanco): el producto ocupa lo que toca
+                # y está centrado, con un margen de ±1 %.
+                izquierda, arriba, derecha, abajo = ayudas.caja_no_blanca(imagen)
+                ocupa = max((derecha - izquierda) / ancho, (abajo - arriba) / alto) * 100
+                assert abs(ocupa - porcentaje) <= 1.0, (nombre, ocupa)
+                assert abs((izquierda + derecha) / 2 - ancho / 2) <= ancho * 0.01
+                assert abs((arriba + abajo) / 2 - alto / 2) <= alto * 0.01
+
+    # Y una sola plataforma.
+    with _descargar(pagina, pagina.get_by_role("link", name="Solo Amazon")) as archivo_zip:
+        solo_amazon = sorted(archivo_zip.namelist())
+    assert len(solo_amazon) == 6 and all(n.startswith("amazon/") or n == "resumen.csv" for n in solo_amazon)
+
+    # La firma sigue en el pie también en esta zona.
+    expect(pagina.locator("footer.firma")).to_be_visible()
+    pagina.click(".zona-boton[data-zona='fotos']")
+    expect(pagina.locator("#zona-fotos")).to_be_visible()

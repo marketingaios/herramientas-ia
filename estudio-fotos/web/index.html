@@ -76,6 +76,38 @@
           </p>
           <ul class="fotos" id="lista-fotos"></ul>
         </div>
+
+        <div class="tarjeta" id="tarjeta-medidas" hidden>
+          <div class="fila-entre">
+            <h2>3 · Fondo blanco y medidas</h2>
+            <span class="fila">
+              <button type="button" class="boton boton-enlace" id="plataformas-todas">Todas</button>
+              <button type="button" class="boton boton-enlace" id="plataformas-ninguna">Ninguna</button>
+            </span>
+          </div>
+          <p class="ayuda">
+            Cada foto marcada sale sobre fondo blanco puro, con el producto centrado, en la medida de cada plataforma que
+            elijas. A las fotos no se les añade nada: ni texto, ni logo, ni bordes.
+          </p>
+          <p class="nota nota-error" id="error-plataformas" hidden></p>
+          <ul class="plataformas" id="lista-plataformas"></ul>
+          <div class="fila">
+            <button type="button" class="boton boton-principal" id="generar-medidas">Generar medidas</button>
+            <span class="ayuda" id="resumen-medidas"></span>
+          </div>
+          <p class="nota nota-error" id="error-medidas" hidden></p>
+          <div class="avance" id="avance-medidas" hidden>
+            <div class="barra" role="progressbar" aria-label="Avance de las medidas" aria-valuemin="0" aria-valuemax="100">
+              <div id="barra-medidas"></div>
+            </div>
+            <p class="avance-texto" id="texto-medidas"></p>
+            <ul class="lista-notas" id="errores-medidas" hidden></ul>
+          </div>
+          <div class="nota nota-bien fila-entre" id="medidas-listas" hidden>
+            <span id="texto-medidas-listas"></span>
+            <button type="button" class="boton" id="ver-resultados">Ver resultados</button>
+          </div>
+        </div>
       </section>
 
       <!-- Zona Resultados -------------------------------------------------------------------------------------- -->
@@ -83,9 +115,17 @@
         <div class="tarjeta">
           <h2 id="titulo-resultados">Resultados</h2>
           <p class="ayuda" id="sin-resultados">
-            Todavía no hay resultados. Sube tus fotos en «Fotos» y aquí verás cada recorte.
+            Todavía no hay resultados. Sube tus fotos en «Fotos» y aquí verás cada recorte, sus medidas y sus escenas.
           </p>
+          <div id="descargas" hidden>
+            <p class="ayuda">
+              Cada descarga es un ZIP con sus fotos y un <code>resumen.csv</code>: archivo, plataforma, medida, peso,
+              porcentaje ocupado por el producto y avisos.
+            </p>
+            <div class="fila" id="botones-descarga"></div>
+          </div>
         </div>
+        <div id="lista-resultados" class="zona"></div>
       </section>
 
       <!-- Zona Ajustes ----------------------------------------------------------------------------------------- -->
