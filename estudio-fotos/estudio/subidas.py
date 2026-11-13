@@ -75,6 +75,8 @@ def limpiar_nombre(nombre: str) -> str:
     base = base.encode("ascii", "ignore").decode("ascii")
     base = re.sub(r"\s+", "_", base.strip())
     base = re.sub(r"[^A-Za-z0-9_-]", "", base)
+    if "sk-or-" in base.lower():
+        base = ""  # un archivo con nombre de clave de OpenRouter: ese nombre no se repite en ningún sitio
     base = re.sub(r"_{2,}", "_", base).strip("_-")[:60].strip("_-")
     if not base or base.lower() in _RESERVADOS_WINDOWS:
         base = f"foto_{base}".strip("_") if base else "foto"

@@ -182,3 +182,13 @@ def test_una_foto_con_perfil_de_color_se_abre_en_rgb(tmp_path):
 
 def test_los_limites_son_los_de_la_ficha():
     assert (subidas.MAX_FOTOS, subidas.MAX_MB, subidas.LADO_MINIMO, subidas.LADO_RECOMENDADO) == (20, 25, 500, 1000)
+
+
+def test_un_archivo_con_nombre_de_clave_no_conserva_ese_nombre():
+    """Si alguien sube un archivo llamado como su clave de OpenRouter, ese nombre no llega a ningún resultado."""
+    from estudio.subidas import limpiar_nombre
+
+    con_forma_de_clave = "sk-or-v1-" + "0123456789abcdef" * 2  # se arma aquí: en el código no hay nada con esa forma
+    assert limpiar_nombre(f"{con_forma_de_clave}.jpg") == "foto"
+    assert limpiar_nombre("mi clave SK-OR-v1-abcdef123456.png") == "foto"
+    assert limpiar_nombre("skor_bolsa.jpg") == "skor_bolsa"

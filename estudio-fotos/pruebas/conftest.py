@@ -9,8 +9,12 @@ from __future__ import annotations
 
 import os
 import secrets
+import tempfile
+import threading
+import time
 from pathlib import Path
 
+import httpx
 import pytest
 
 CARPETA = Path(__file__).resolve().parent.parent  # estudio-fotos
@@ -66,6 +70,29 @@ def archivos_reales_intactos():
     assert not cambiados, f"Las pruebas tocaron archivos reales del usuario: {cambiados}"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def sin_internet():
+    """Vigilante: desde las pruebas no sale ninguna petición a internet. Solo se habla con este computador."""
+    original = httpx.HTTPTransport.handle_request
+
+    def solo_local(self, peticion):
+        if peticion.url.host not in ("127.0.0.1", "localhost"):
+            raise AssertionError("Una prueba intentó llamar a internet: las pruebas solo usan el simulador local.")
+        return original(self, peticion)
+
+    httpx.HTTPTransport.handle_request = solo_local
+    yield
+    httpx.HTTPTransport.handle_request = original
+
+
+@pytest.fixture(autouse=True)
+def carpeta_temporal_del_sistema():
+    """El servidor manda sus temporales a `trabajo/`: después de cada prueba se deja como estaba."""
+    antes = tempfile.tempdir
+    yield
+    tempfile.tempdir = antes
+
+
 @pytest.fixture(scope="session")
 def clave_falsa() -> str:
     """Una clave con la forma de las de OpenRouter, inventada en cada ejecución (nunca escrita en el código)."""
@@ -114,3 +141,46 @@ def config_simulador(carpeta_datos: Path, simulador):
     configuracion = para_pruebas(carpeta_datos, openrouter_url=simulador.url)
     configuracion.preparar_carpetas()
     return configuracion
+
+
+class ServidorDePruebas:
+    """El servidor de la herramienta, arrancado de verdad en 127.0.0.1 (en un puerto libre) para una prueba."""
+
+    def __init__(self, config, estudio=None):
+        import uvicorn
+
+        from estudio.estudio import Estudio
+        from estudio.servidor import crear_aplicacion
+
+        self.config = config
+        self.estudio = estudio or Estudio(config)
+        self.app = crear_aplicacion(config, self.estudio)
+        self._uvicorn = uvicorn.Server(
+            uvicorn.Config(self.app, host="127.0.0.1", port=0, log_level="warning", access_log=False)
+        )
+        self._hilo = threading.Thread(target=self._uvicorn.run, name="servidor-de-pruebas", daemon=True)
+        self._hilo.start()
+        limite = time.monotonic() + 15
+        while not self._uvicorn.started:
+            assert time.monotonic() < limite, "el servidor de pruebas no arrancó"
+            time.sleep(0.01)
+        self.puerto = self._uvicorn.servers[0].sockets[0].getsockname()[1]
+        self.url = f"http://127.0.0.1:{self.puerto}"
+        self.cliente = httpx.Client(base_url=self.url, trust_env=False, timeout=60)
+
+    def esperar(self, tipo: str, segundos: float = 60) -> None:
+        assert self.estudio.esperar(tipo, segundos), f"el trabajo «{tipo}» no terminó a tiempo"
+
+    def parar(self) -> None:
+        self.cliente.close()
+        self._uvicorn.should_exit = True
+        self._hilo.join(timeout=10)
+        self.estudio.cerrar()
+
+
+@pytest.fixture
+def servidor(config_simulador):
+    """El servidor con los datos en la carpeta temporal, el recorte simulado y OpenRouter simulado."""
+    servidor = ServidorDePruebas(config_simulador)
+    yield servidor
+    servidor.parar()

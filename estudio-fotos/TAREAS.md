@@ -52,7 +52,7 @@ commit.
 - [x] **Paso 11 · Escenas**: texto fijo, las 5 escenas y la propia, colores de la marca, imagen de referencia, formato
       exacto sin ampliar ni deformar, marca IPTC, lote con costo real.
       Prueba: `test_escenas.py` (la marca IPTC está y se conserva al cambiar de medida).
-- [ ] **Paso 12 · Servidor**: rutas de la API, estáticos, `Host`/`Origin`, CSP, errores en español, sin `/docs`.
+- [x] **Paso 12 · Servidor**: rutas de la API, estáticos, `Host`/`Origin`, CSP, errores en español, sin `/docs`.
       Prueba: `test_servidor.py` (incluye más de 20 fotos y cada ruta de más), `test_privacidad.py` (ninguna respuesta,
       registro, salida ni página contiene la clave falsa; el 422 no repite la entrada; sin rutas personales),
       `test_codigo.py` (sin `shell=True`, `eval` ni `exec`; las únicas direcciones de internet del código son

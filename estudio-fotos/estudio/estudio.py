@@ -841,7 +841,7 @@ class Estudio:
 
     # --- Lo que ve la página -------------------------------------------------------------------------------------
 
-    def _foto_publica(self, foto: Foto) -> dict:
+    def _foto_publica(self, foto: Foto, orden: list[str]) -> dict:
         recorte = None
         if foto.recorte is not None:
             recorte = {
@@ -862,7 +862,7 @@ class Estudio:
             "error": foto.error,
             "segundos": None if foto.segundos is None else round(foto.segundos, 1),
             "recorte": recorte,
-            "salidas": [self._salida_publica(foto, salida) for salida in self._salidas_en_orden(foto)],
+            "salidas": [self._salida_publica(foto, salida) for salida in self._salidas_en_orden(foto, orden)],
             "escenas": [self._escena_publica(foto, escena) for escena in foto.escenas],
         }
 
@@ -890,9 +890,10 @@ class Estudio:
             "queda": costos.dolares(max(0.0, tope - self.gasto_sesion)),
         }
 
-    def _salidas_en_orden(self, foto: Foto) -> list[Salida]:
-        orden = {identificador: n for n, identificador in enumerate(self._orden_plataformas())}
-        return sorted(foto.salidas.values(), key=lambda salida: orden.get(salida.plataforma, len(orden)))
+    @staticmethod
+    def _salidas_en_orden(foto: Foto, orden: list[str]) -> list[Salida]:
+        puesto = {identificador: n for n, identificador in enumerate(orden)}
+        return sorted(foto.salidas.values(), key=lambda salida: puesto.get(salida.plataforma, len(puesto)))
 
     @staticmethod
     def _salida_publica(foto: Foto, salida: Salida) -> dict:
@@ -910,6 +911,7 @@ class Estudio:
 
     def publico(self) -> dict:
         """Todo el estado, tal como lo pinta la página."""
+        orden = self._orden_plataformas()  # plataformas.json se lee una vez por consulta, no una por foto
         with self._candado:
             return {
                 "herramienta": HERRAMIENTA,
@@ -926,7 +928,7 @@ class Estudio:
                 "gasto": self._gasto_publico(),
                 "modelo": self.modelo.publico(),
                 "trabajos": {tipo: trabajo.publico() for tipo, trabajo in self.trabajos.items()},
-                "fotos": [self._foto_publica(foto) for foto in self.fotos.values()],
+                "fotos": [self._foto_publica(foto, orden) for foto in self.fotos.values()],
             }
 
 
