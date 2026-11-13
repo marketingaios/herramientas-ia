@@ -29,7 +29,7 @@ commit.
       Prueba: `test_recorte.py` (simulado; elección del modelo; la limpieza no muerde; nunca `bria-rmbg`) y, con el
       modelo real, `test_modelo_real.py` (`-m modelo`: las 5 muestras, máscara entre el 5 % y el 95 %, el modelo queda
       en `modelos/`, tiempo por foto).
-- [ ] **Paso 6 · El estudio y la cola de recorte**: fotos, nombres repetidos, avance «3 de 5 · foto_3.jpg · 4,2 s», una
+- [x] **Paso 6 · El estudio y la cola de recorte**: fotos, nombres repetidos, avance «3 de 5 · foto_3.jpg · 4,2 s», una
       sola sesión por lote, un error no rompe el lote, estados de la descarga del modelo (descargando con su tamaño,
       fallida, reintento).
       Prueba: `test_cola.py`.
