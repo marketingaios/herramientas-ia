@@ -13,7 +13,8 @@ macOS 26.6, Python 3.12.13 y onnxruntime 1.32.0.
 | **Total** | | **726** | **726** | |
 
 Ninguna falla y ninguna se salta. Son los números de la última pasada de las tres baterías, hecha después de corregir
-lo que encontró la revisión de seguridad (antes de la revisión eran 709: 695, 9 y 5).
+lo que encontró la revisión de seguridad (antes de la revisión eran 709: 695, 9 y 5). En su segunda vuelta, el Revisor
+volvió a pasar las tres sobre el commit corregido y le salió lo mismo: 712, 9 y 5 (1 min 01 s, 3 min 08 s y 46 s).
 
 ## El tiempo por foto en este computador
 
@@ -129,6 +130,9 @@ cambio en el código.
   vigilante compara antes y después el `.env`, `ajustes.json`, `gastos.jsonl`, el logo y `salidas/` (sin abrir el
   `.env`: solo mira su fecha y su tamaño).
 - **La clave de las pruebas** se inventa en cada ejecución: no está escrita en ningún archivo.
+- **Una batería cada vez**: todas usan la misma carpeta temporal, y una pasada que empieza borra los archivos de otra
+  que esté en marcha. Pasó una vez durante la revisión: una prueba de la aceleración falló porque el Revisor pasaba
+  pruebas al mismo tiempo; repetida sin nada más en marcha, pasaron las 712.
 
 ## Los seis controles de la ficha
 

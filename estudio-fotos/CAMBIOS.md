@@ -34,3 +34,9 @@ sin probar.
 - No abre fotos HEIC (dice cómo convertirlas).
 - No se publica en internet: es para un solo computador.
 - No vuelve a leer las reglas de cada plataforma: si una cambia, se edita `plataformas.json`.
+
+**Para la versión siguiente** (notas menores del Revisor, que aprobó esta versión; el detalle está en `REVISION.md`)
+
+- Tapar la ruta personal también en los errores que Python escribe por su cuenta al soltar un objeto o al cerrar.
+- En Windows, tapar la ruta personal escrita con las barras dobladas o con otras mayúsculas.
+- Probar la herramienta en Windows, la primera descarga del modelo mirando la consola y una escena de verdad.

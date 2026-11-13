@@ -147,8 +147,9 @@ la primera (sus fotos dejarían de verse) y lleva su propia cuenta del tope de g
 - Solo se conecta a internet para tres cosas: instalar las librerías, descargar el modelo de recorte y llamar a
   OpenRouter cuando confirmas unas escenas (o pulsas «Probar»).
 - La clave no aparece en la página, en los registros ni en los mensajes de error.
-- La ventana donde la abriste no muestra la clave ni la ruta de tu carpeta personal: tampoco durante la descarga del
-  modelo ni cuando algo falla.
+- Lo que la herramienta escribe en la ventana donde la abriste pasa por un filtro que tapa la clave y la ruta de tu
+  carpeta personal, también durante la descarga del modelo y cuando algo falla. Lo que escriba `uv` antes de arrancarla
+  no pasa por ese filtro.
 - Las fotos que subes se copian a `trabajo/` mientras la herramienta está abierta; al cerrarla se borran de ahí. Tus
   resultados se quedan en `salidas/`.
 - La herramienta no pide contraseña. Mientras está abierta, otro usuario o programa de este mismo computador podría
@@ -196,6 +197,9 @@ uv run --directory estudio-fotos --group pruebas pytest               # las ráp
 uv run --directory estudio-fotos --group pruebas pytest -m modelo     # con el modelo real de recorte
 uv run --directory estudio-fotos --group pruebas pytest -m e2e        # de punta a punta, con el navegador
 ```
+
+Pasa una batería cada vez: todas usan la misma carpeta temporal (`estudio-fotos/.pruebas-tmp/`), y una pasada que
+empieza borra los archivos de otra que esté en marcha.
 
 Las de punta a punta necesitan Chromium, que se instala una vez dentro de la carpeta (`estudio-fotos/.navegadores/`).
 En Mac y Linux, desde la carpeta `estudio-fotos`:

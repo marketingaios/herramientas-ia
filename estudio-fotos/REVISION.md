@@ -7,6 +7,7 @@
 - **Cómo**: lectura del código; las pruebas rápidas (`uv run --directory estudio-fotos --group pruebas pytest`:
   pasaron las 695, en 7 min 50 s de reloj); comandos de solo lectura de git; y dos comprobaciones propias con la
   configuración de pruebas (carpeta temporal, sin internet, sin datos reales). Nunca se abrió el archivo `.env`.
+- **Estado**: cerrada en la segunda vuelta, sobre el commit `791461c`: **Aprobada** (ver «Veredicto final»).
 
 Las rutas de este documento son relativas a `herramientas-ia/`; `estudio/…` y `pruebas/…` están dentro de
 `estudio-fotos/`.
@@ -150,6 +151,7 @@ Las rutas de este documento son relativas a `herramientas-ia/`; `estudio/…` y 
 ### Hay que corregir
 
 **C1 · gravedad media · la primera descarga del modelo escribe en la consola la ruta de la carpeta personal**
+· *Segunda vuelta: Corregido.*
 
 - Dónde: `estudio/recorte.py:243-246` y `estudio/registro.py:50-56`.
 - Qué pasa: rembg descarga el modelo con pooch, y pooch tiene su propio registro, que escribe directo en la consola:
@@ -169,6 +171,10 @@ Las rutas de este documento son relativas a `herramientas-ia/`; `estudio/…` y 
   una línea con la carpeta personal y compruebe que la consola no la lleva.
 
 ### Sugerencias (no bloquean)
+
+Estado en la segunda vuelta: S1, **Corregido**; S2, **Avisado** en el README; S3, **Corregido** (sin comprobar con
+CoreML de verdad); S4, **Corregido**; S5, **Corregido** el vaciado al cerrar y **Avisado** lo de una sola copia; S6,
+**Corregido**. El detalle está en «Segunda vuelta».
 
 - **S1 · baja · el tope de peso de la subida se puede saltar con una petición hecha a mano** (`servidor.py:168-174`).
   El tope se decide por el `Content-Length` que declara la petición. Comprobado: un logo de unos 8 MB enviado con
@@ -211,4 +217,194 @@ Las sugerencias S1 a S6 no bloquean la entrega. La S1 es la más recomendable: e
 fácil.
 
 ## Segunda vuelta
+
+- **Fecha**: 13 de noviembre de 2026.
+- **Quién revisa**: el mismo Revisor, con las mismas reglas. No cambió código, pruebas ni configuración, no hizo
+  commits, no usó internet, no gastó dinero y no abrió el archivo `.env`. Solo escribió en este archivo.
+- **Qué se revisó**: el commit `791461c`, el único desde `3010900`. Solo lo corregido y sus pruebas: los 9 archivos de
+  `estudio/` que cambiaron, las pruebas nuevas y lo que dicen `README.md`, `PLAN.md` (decisión 36) y `PRUEBAS.md`.
+- **Cómo**: lectura de los cambios (`git diff 3010900 791461c`), las pruebas, y cinco comprobaciones propias sobre
+  copias del proyecto en la carpeta temporal del Revisor (con la configuración de pruebas, sin datos reales).
+
+### Estado de cada punto
+
+| Punto | Estado |
+|---|---|
+| C1 · la consola y la carpeta personal | **Corregido** (quedan tres notas menores, N1 a N3) |
+| S1 · subida «por trozos» | **Corregido** |
+| S2 · sin contraseña local | **Avisado** en el README; sin cambio en el código |
+| S3 · temporales del acelerador | **Corregido** en el código; sin comprobar con CoreML de verdad |
+| S4 · prueba de `inicio/` | **Corregido** |
+| S5 · `trabajo/` | **Corregido** el vaciado al cerrar; **Avisado** en el README lo de una sola copia |
+| S6 · detalles | **Corregido** |
+
+Nada quedó «Sin cambio» ni «Sigue mal».
+
+**C1 · Corregido**
+
+- Código: `estudio/registro.py:121-141` (`proteger_consola`) pone el filtro en el registro de pooch (`:85-96`), en el
+  registro raíz, al que suben los registros de las librerías, y en la salida de los registros sueltos; manda los
+  avisos de Python a ese registro; y cambia la traza de un error no controlado, en el hilo principal o en otro, por
+  una línea con el tipo del error, el archivo (sin su carpeta) y la línea (`:99-118`). `estudio/__main__.py:100` lo
+  llama antes que nada. `estudio/recorte.py:186` vuelve a poner el filtro de pooch justo antes de descargar o de
+  preparar el modelo (`:203`, `:229`). La carpeta personal se tapa también escrita con «/» (`registro.py:27-34`).
+- Comprobado por el Revisor: programas aparte que hacen lo mismo que el arranque (proteger la consola, crear el
+  servidor de uvicorn, preparar los registros) y luego escriben por cada camino un texto con la carpeta personal. La
+  línea de la descarga de pooch, un aviso de Python, un registro de una librería, un registro con traza (el de
+  asyncio y el de uvicorn), un registro suelto, un error en otro hilo y un error no controlado en el hilo principal:
+  en los ocho, la consola sale con `~` y sin traza.
+- Pruebas: `test_privacidad.py::test_la_consola_no_muestra_la_carpeta_personal_por_ningun_camino`,
+  `::test_el_registro_de_la_descarga_del_modelo_pasa_por_el_filtro`,
+  `::test_la_carpeta_personal_se_tapa_tambien_escrita_con_barras_normales`,
+  `::test_el_arranque_protege_la_consola_antes_que_nada` y
+  `test_arranque.py::test_si_el_arranque_falla_la_consola_no_muestra_la_traza_ni_la_carpeta_personal`.
+- ¿Fallarían sin el arreglo? Sí. Con el código de `3010900` fallan las cinco. Y quitando de una copia cada pieza del
+  arreglo por separado (el filtro de pooch al arrancar, el de antes de descargar, los avisos de Python, el error en
+  el hilo principal, el error en otro hilo, el registro raíz, los registros sueltos, la forma con «/» y la llamada
+  del arranque), siempre falla al menos una.
+
+**Otros caminos por los que la carpeta personal todavía puede llegar a la consola** (ninguno bloquea)
+
+- **N1 · baja · errores que Python no puede lanzar** (`registro.py:139-140`). Un error dentro de un destructor
+  (`__del__`) o al salir (`atexit`) lo escribe Python por `sys.unraisablehook`, que no se cambió: sale con su traza y
+  sus rutas. Comprobado con un programa aparte, en los dos casos. Es poco probable: hace falta que una librería falle
+  justo al soltar un objeto o al cerrar, y no se vio en ninguna pasada de las pruebas (la prueba del cierre exige que
+  no haya traza). Arreglo: poner también `sys.unraisablehook` con el mismo mensaje y añadir el caso a la primera
+  prueba de C1.
+- **N2 · baja · Windows, sin comprobar de verdad** (`registro.py:27-34`). Simulado con una carpeta personal de
+  mentira: la ruta normal y la escrita con «/» se tapan. No se tapa la escrita con las barras dobladas, que es como
+  Python la pone dentro del texto de un error de archivo (el filtro añade ese texto cuando una librería registra un
+  error con su traza, `registro.py:50-52`), ni la escrita con otras mayúsculas. Los registros de la herramienta solo
+  escriben el tipo del error, así que solo afecta a los de las librerías. Arreglo: tapar también la forma con barras
+  dobladas y, en Windows, comparar sin distinguir mayúsculas.
+- **N3 · lo que no pasa por el filtro**. Lo que una librería escriba directo en la consola, sin usar los registros
+  (comprobado: un `print` sale tal cual), y lo que escriba `uv` antes de arrancar la herramienta: su aviso cuando hay
+  otro entorno de Python activado lleva la ruta de ese entorno (visto al pasar las pruebas). En las librerías que se
+  usan no se vio ningún caso. Por eso la frase del README (`estudio-fotos/README.md:150-151`), «no muestra … la ruta
+  de tu carpeta personal: tampoco … cuando algo falla», promete un poco más de lo que el código puede asegurar.
+
+**S1 · Corregido**
+
+- Código: `estudio/servidor.py:168-177`. Una subida que trae `Transfer-Encoding` se rechaza con el 411 antes de leer
+  el cuerpo; sin esa cabecera, el servidor solo lee los bytes que declara `Content-Length`.
+- Comprobado: repetida la comprobación de la primera vuelta. El logo de 8 MB con `Content-Length: 10` y
+  `Transfer-Encoding: chunked` recibe ahora el 411 («La subida no dice cuánto pesa…»), sin recibirse entero y sin
+  dejar temporales. Igual con solo `Transfer-Encoding`, con la cabecera en mayúsculas y en `/api/fotos`. Una subida
+  normal sigue llegando. Las peticiones JSON no dependían de esto: cuentan los bytes al recibirlos
+  (`servidor.py:142-150`).
+- Prueba: `test_servidor.py::test_una_subida_que_pesa_demasiado_se_rechaza_antes_de_recibirla` (fotos y logo). Falla
+  con el código anterior.
+
+**S2 · Avisado en el README**
+
+- `estudio-fotos/README.md:154-155`: la herramienta no pide contraseña; mientras está abierta, otro usuario o programa
+  del computador podría usarla y gastar (ver la clave, no); conviene cerrarla al terminar. Dice lo que pasa de verdad.
+  Sin cambio en el código (`PLAN.md`, decisión 36).
+
+**S3 · Corregido en el código · sin comprobar con CoreML de verdad**
+
+- Código: `estudio/equipo.py:185-203`. Si la medición eligió el acelerador, antes de preparar el modelo se crea
+  `trabajo/acelerador` y `TMPDIR` apunta ahí. `TEMP` y `TMP`, los de Windows, no hacen falta: CoreML solo existe en Mac.
+- Prueba, con piezas de mentira:
+  `test_aceleracion.py::test_si_se_elige_el_acelerador_sus_temporales_van_a_la_carpeta_de_trabajo`. Falla con el
+  código anterior.
+- Sin comprobar: que CoreML escriba de verdad ahí. En este computador la medición deja el procesador.
+
+**S4 · Corregido**
+
+- Prueba nueva: `test_pagina.py::test_la_pagina_de_inicio_tampoco_carga_nada_de_internet`. Comprueba de verdad: exige
+  que cada carga sea una ruta relativa a un archivo que existe dentro de la carpeta, y que los enlaces vayan solo a
+  `127.0.0.1` o a la firma. Pasa también con el código anterior, como debe: la página ya estaba bien.
+
+**S5 · Corregido (vaciar al cerrar) · Avisado (una sola copia)**
+
+- Código: `estudio/servidor.py:212-217` vacía `trabajo/` al cerrar, después de parar el trabajo en curso;
+  `estudio/estudio.py:231-244` ya no falla si falta la carpeta o si un archivo está en uso.
+- Comprobado por el Revisor en una carpeta temporal: `trabajo/` queda vacía; un enlace puesto dentro de `trabajo/` se
+  quita sin tocar lo que hay al otro lado; `salidas/` no se toca.
+- Prueba: `test_arranque.py::test_al_cerrar_no_quedan_fotos_en_la_carpeta_de_trabajo` (con Ctrl+C y parada desde
+  fuera): la foto subida desaparece de `trabajo/`, el resultado se queda en `salidas/` y no hay traza. Falla con el
+  código anterior.
+- Una sola copia a la vez: lo avisa `estudio-fotos/README.md:126-127`; sin cambio en el código. Ahora, además, cerrar
+  una copia vacía los temporales de la otra: es el mismo caso y vale el mismo aviso. No es de seguridad.
+
+**S6 · Corregido**
+
+- Código: `estudio/plataformas.py:99` (`fullmatch`); `estudio/escenas.py:115` y `estudio/ajustes.py:91` (se mira que
+  sea un texto antes de buscarlo).
+- Pruebas: `test_plataformas.py::test_un_archivo_con_errores_da_un_mensaje_claro_y_sin_rutas` (el id con un salto de
+  línea al final) y
+  `test_servidor.py::test_una_lista_donde_va_un_texto_se_rechaza_con_su_mensaje_y_no_con_un_fallo_interno` (4
+  casos). Fallan con el código anterior.
+
+### ¿Las correcciones abrieron algo nuevo?
+
+No se encontró nada.
+
+- **Vaciar `trabajo/` al cerrar**: borra solo dentro de `trabajo/`, no sigue enlaces, y solo lo hace el servidor que
+  creó su propio estudio (`servidor.py:203`, `:215`). Si un recorte sigue en marcha más de 10 segundos al cerrar, se
+  queda sin su foto: se anota el tipo del error y el proceso termina igual.
+- **Cambiar `TMPDIR` en el proceso**: solo pasa si la medición eligió el acelerador. Los temporales de las subidas no
+  dependen de esa variable (`servidor.py:210`) y la prueba del acelerador recibe su propia carpeta (`equipo.py:261`).
+  Si el acelerador fallara por quedarse sin esa carpeta (otra copia la vacía), el recorte sigue con el procesador
+  (`estudio.py:345-356`).
+- **El registro raíz con salida**: lo que las librerías registran como aviso o error ya llegaba a la consola; ahora
+  pasa por el filtro. No sale nada que antes no saliera.
+- **Los errores no controlados** no se esconden: queda una línea con el tipo y el lugar, y el proceso sigue
+  terminando con error (la prueba del arranque roto lo exige).
+- **Rechazar `Transfer-Encoding`**: la página sube con el peso declarado. La prueba de punta a punta n.º 1 sube 5
+  fotos con Chromium y pasa.
+- **`pruebas/conftest.py`**: solo devuelve `TMPDIR` a su valor después de cada prueba.
+- Después de todas las pasadas: `salidas/` y `trabajo/` reales siguen vacías, no hay `gastos.jsonl` ni
+  `ajustes.json`, el archivo `.env` sigue sin existir y sigue fuera de git, y el código y las pruebas están igual
+  que en `791461c` (`git diff` vacío en `estudio/` y `pruebas/`).
+
+### Pruebas que se pasaron
+
+| Qué | Resultado |
+|---|---|
+| Rápidas, sobre `791461c` (`uv run --directory estudio-fotos --group pruebas pytest`) | 712 pasan, ninguna falla; 1 min 01 s |
+| Con el modelo real (`-m modelo`) | 9 pasan; 3 min 08 s |
+| De punta a punta (`-m e2e`) | 5 pasan; 46 s |
+| Las 16 pruebas de lo corregido (15 nuevas y la de S1, ampliada), con el código de `3010900`, en una copia | 14 fallan; pasan la de S4 y un caso de S6 que ya se rechazaba |
+| Las 5 pruebas de C1, quitando una pieza del arreglo cada vez (9 veces), en una copia | siempre falla al menos una |
+| `test_estructura.py` y `test_codigo.py`, después de escribir esta sección | 64 pasan |
+
+Las pruebas con el modelo real no descargaron nada: el modelo ya estaba en `modelos/`. Las de punta a punta usan
+OpenRouter simulado.
+
+### Lo que sigue sin poder comprobarse
+
+- La primera descarga del modelo, mirando la consola de verdad: no se usa internet y el modelo ya está descargado.
+  Vale la comprobación hecha con el mismo registro que usa la descarga.
+- El acelerador con CoreML de verdad (S3): aquí la medición volvió a dejar el procesador.
+- Windows y Linux: N2 es una simulación.
+- Los permisos del `.env` real: todavía no existe.
+- OpenRouter de verdad: no se llamó ni se gastó nada.
+
+### Cambios que aparecieron al cerrar la revisión (fuera de lo revisado)
+
+Al terminar esta sección había en la carpeta de trabajo, sin commit, tres cambios de documentos que no hizo el Revisor
+(él solo escribe este archivo):
+
+- `README.md`: la frase de N3 ya está cambiada. Ahora dice que lo que escribe la herramienta pasa por un filtro que
+  tapa la clave y la carpeta personal, y que lo que escriba `uv` antes de arrancarla no pasa por él. Se ajusta más a
+  lo que hace el código. N1 y N2 siguen igual.
+- `PRUEBAS.md`: anota las tres pasadas del Revisor, con los mismos números de la tabla de arriba.
+- `CAMBIOS.md`: deja N1, N2 y lo que no se probó para la versión siguiente.
+
+Leídos con `git diff`: son solo texto, no tocan código ni pruebas, y no cambian el veredicto. Los números de línea
+del README que cita esta sección son los del commit `791461c`.
+
+## Veredicto final
+
+**Aprobada.**
+
+- C1 está corregido y sus pruebas fallan sin el arreglo. Las seis sugerencias quedaron corregidas o avisadas.
+- Los 10 puntos de la ficha siguen «Bien»: lo cambiado toca los puntos 5, 8 y 9 y los deja mejor, y las 726 pruebas
+  pasan (712 rápidas, 9 con el modelo real y 5 de punta a punta).
+- No queda nada que corregir para entregar la versión 1.
+- Para una versión siguiente, sin urgencia: N1 (`sys.unraisablehook`, en `estudio/registro.py:139-140`) y N2 (la
+  carpeta personal como la escribe Windows, en `estudio/registro.py:27-34`). La frase del README de N3
+  (`estudio-fotos/README.md:150-151`) ya está cambiada en la carpeta de trabajo, sin commit todavía.
 
