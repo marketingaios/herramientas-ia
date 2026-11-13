@@ -30,6 +30,7 @@ class Config:
     datos: Path = CARPETA
     openrouter_url: str = OPENROUTER_URL
     recortador: str = "rembg"  # «rembg» (el de verdad) o «simulado» (pruebas)
+    medir: bool = True  # medir la aceleración al terminar el primer lote (en las pruebas, solo cuando se pide)
 
     # Archivos comunes de herramientas-ia
     @property
@@ -94,6 +95,7 @@ def para_pruebas(carpeta_temporal: Path, *, openrouter_url: str = OPENROUTER_URL
         datos=carpeta_temporal / "estudio-fotos",
         openrouter_url=_url_openrouter(openrouter_url),
         recortador=recortador,
+        medir=False,
     )
 
 

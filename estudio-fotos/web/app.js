@@ -193,6 +193,9 @@
     mostrar($("chip-modelo"), Boolean(modelo.etiqueta));
     $("nota-modelo").textContent = modelo.nota || "";
     mostrar($("nota-modelo"), Boolean(modelo.nota));
+    // La aceleración se mide, no se supone: en Ajustes se dice qué salió (o que se está midiendo).
+    $("medicion-modelo").textContent = modelo.medicion || "";
+    mostrar($("medicion-modelo"), Boolean(modelo.medicion));
 
     const caja = $("estado-modelo");
     const ocupado = ["descargando", "preparando", "error"].includes(modelo.estado);

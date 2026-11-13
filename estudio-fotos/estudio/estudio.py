@@ -7,6 +7,7 @@ cierra; sus resultados quedan en `salidas/<fecha_hora>/`.
 from __future__ import annotations
 
 import shutil
+import statistics
 import threading
 import time
 import uuid
@@ -179,6 +180,7 @@ class Estudio:
         config: Config,
         fabrica_recortador: Callable[[str], Recortador] | None = None,
         dormir: Callable[[float], None] = time.sleep,
+        aceleracion: equipo.Aceleracion | None = None,
     ) -> None:
         self.config = config
         self._dormir = dormir  # cómo se espera cuando OpenRouter pide esperar (las pruebas no esperan de verdad)
@@ -189,6 +191,14 @@ class Estudio:
         self._recortador: Recortador | None = None
         self._modelo_recortador: str | None = None
         self._modelo_bloqueado = False
+        # La aceleración se mide con el modelo de verdad, nunca con el recortador simulado de las pruebas.
+        if aceleracion is None and config.medir and config.recortador == "rembg" and fabrica_recortador is None:
+            aceleracion = equipo.Aceleracion(config.medicion, config.modelos, config.trabajo)
+        self._aceleracion = aceleracion
+        self._midiendo = False
+        self._por_medir = False  # un lote acaba de terminar y falta decidir si toca medir
+        self._renovar_recortador = False  # la medición eligió el acelerador: el próximo lote prepara el modelo con él
+        self._tiempos_modelo: dict[str, list[float]] = {}  # lo que tarda el modelo por foto, con el procesador
         self._pendientes: deque[str] = deque()
         self._hilo_recorte: threading.Thread | None = None
         self._cerrado = False
@@ -230,6 +240,8 @@ class Estudio:
         with self._hay_trabajo:
             self._cerrado = True
             self._hay_trabajo.notify_all()
+        if self._aceleracion is not None:
+            self._aceleracion.cancelar()  # si la prueba del acelerador está en marcha, se corta
         if self._hilo_recorte:
             self._hilo_recorte.join(timeout=10)
 
@@ -238,7 +250,8 @@ class Estudio:
     def _fabrica_por_defecto(self, modelo: str) -> Recortador:
         if self.config.recortador == "simulado":
             return RecortadorSimulado()
-        return RecortadorRembg(modelo, self.config.modelos, equipo.proveedores_para())
+        proveedores = self._aceleracion.proveedores_para(modelo) if self._aceleracion else equipo.proveedores_para()
+        return RecortadorRembg(modelo, self.config.modelos, proveedores)
 
     def _eleccion(self) -> equipo.Eleccion:
         return equipo.elegir_modelo(self.calidad_recorte)
@@ -278,6 +291,12 @@ class Estudio:
     def _asegurar_recortador(self) -> Recortador | None:
         """El recortador del modelo que toca, listo para usar. Se crea una sola vez y se reutiliza en todo el lote."""
         eleccion = self._eleccion()
+        with self._candado:
+            # Si la medición eligió el acelerador, el modelo se vuelve a preparar al empezar un lote, nunca a mitad.
+            renovar = self._renovar_recortador and self.trabajos["recorte"].hechos == 0
+            if renovar:
+                self._renovar_recortador = False
+                self._recortador = self._modelo_recortador = None  # suelta la memoria del anterior antes de preparar
         if self._recortador is not None and self._modelo_recortador == eleccion.modelo:
             return self._recortador
 
@@ -309,10 +328,72 @@ class Estudio:
             self.modelo.estado, self.modelo.mensaje = "listo", None
             self.trabajos["recorte"].mensaje = None
             activos = recortador.proveedores_activos()
-            if "CUDAExecutionProvider" in getattr(recortador, "proveedores", []) and "CUDAExecutionProvider" not in activos:
+            if "CUDAExecutionProvider" in getattr(recortador, "pedidos", []) and "CUDAExecutionProvider" not in activos:
                 self.modelo.nota = equipo.MENSAJE_NVIDIA_SIN_CUDA
+        self._anotar_fallo_del_acelerador(recortador, eleccion.modelo)
         registro.info("Modelo de recorte listo: %s", eleccion.modelo)
         return recortador
+
+    # --- La aceleración medida -----------------------------------------------------------------------------------
+
+    def _anotar_fallo_del_acelerador(self, recortador: Recortador, modelo: str) -> None:
+        """Si el acelerador elegido falló al usarlo, el recortador ya siguió con el procesador: aquí se deja anotado."""
+        if not recortador.acelerador_fallido:
+            return
+        recortador.acelerador_fallido = False
+        registro.info("La aceleración falló: el recorte sigue con el procesador")
+        if self._aceleracion is not None:
+            try:
+                self._aceleracion.anotar_fallo(modelo)
+            except OSError as fallo:
+                registro.error("No se pudo guardar la medición (%s)", type(fallo).__name__)
+
+    def _medir_si_toca(self) -> None:
+        """Al terminar un lote, con la cola vacía: prueba el acelerador una sola vez por modelo, sin parar nada."""
+        aceleracion = self._aceleracion
+        with self._candado:
+            modelo = self._modelo_recortador
+            tiempos = list(self._tiempos_modelo.get(modelo or "", []))
+            libre = not (self._midiendo or self._cerrado or self._pendientes)
+        toca = False
+        try:
+            toca = bool(aceleracion and libre and modelo and tiempos and aceleracion.hay_que_medir(modelo))
+        finally:
+            with self._hay_trabajo:
+                self._por_medir = False
+                self._midiendo = self._midiendo or toca
+                self._hay_trabajo.notify_all()
+        if toca:
+            threading.Thread(
+                target=self._medir, args=(modelo, statistics.median(tiempos)), name="medicion-aceleracion", daemon=True
+            ).start()
+
+    def _medir(self, modelo: str, segundos_procesador: float) -> None:
+        elegido = None
+        try:
+            medida = self._aceleracion.medir(modelo, segundos_procesador)
+            if medida is not None:
+                elegido = medida["elegido"]
+                registro.info("Aceleración medida para %s: se usa %s", modelo, elegido)
+        except Exception as fallo:
+            registro.error("No se pudo medir la aceleración (%s)", type(fallo).__name__)
+        finally:
+            with self._hay_trabajo:
+                self._midiendo = False
+                if elegido not in (None, "procesador"):
+                    self._renovar_recortador = True
+                self._hay_trabajo.notify_all()
+
+    def esperar_medicion(self, segundos: float = 150.0) -> bool:
+        """Espera a que termine la medición de la aceleración (para las pruebas). Devuelve si terminó a tiempo."""
+        limite = time.monotonic() + segundos
+        with self._hay_trabajo:
+            while self._midiendo or self._por_medir:
+                resto = limite - time.monotonic()
+                if resto <= 0:
+                    return False
+                self._hay_trabajo.wait(timeout=min(resto, 0.2))
+        return True
 
     def _avance_descarga(self, bytes_bajados: int) -> None:
         with self._candado:
@@ -522,11 +603,19 @@ class Estudio:
                 izquierda, arriba, derecha, abajo = resultado.caja
                 foto.porcentaje = max((derecha - izquierda) / foto.ancho, (abajo - arriba) / foto.alto) * 100
                 foto.peso_recorte = destino.stat().st_size
+                if not recortador.acelerado() and not recortador.acelerador_fallido:
+                    # Lo que tarda el modelo con el procesador: con esto se compara el acelerador.
+                    self._tiempos_modelo.setdefault(self._modelo_recortador or "", []).append(resultado.segundos_modelo)
             trabajo = self.trabajos["recorte"]
             trabajo.terminar_archivo(error)
-            if not self._pendientes:
+            terminado = not self._pendientes
+            if terminado:
                 trabajo.terminar()
+                self._por_medir = self._aceleracion is not None
             self._hay_trabajo.notify_all()
+        self._anotar_fallo_del_acelerador(recortador, self._modelo_recortador or recortador.modelo)
+        if terminado:
+            self._medir_si_toca()
 
     def esperar(self, tipo: str, segundos: float = 60.0) -> bool:
         """Espera a que termine un trabajo (para las pruebas). Devuelve si terminó a tiempo."""
@@ -881,6 +970,14 @@ class Estudio:
             "url": f"/api/archivos/{foto.id}/{escena.archivo}",
         }
 
+    def _medicion_publica(self) -> str | None:
+        """Lo que la página dice de la aceleración: que se está midiendo, o lo que salió."""
+        if self._midiendo:
+            return equipo.MENSAJE_MIDIENDO
+        if self._aceleracion is None or not self.modelo.nombre:
+            return None
+        return self._aceleracion.texto(self.modelo.nombre)
+
     def _gasto_publico(self) -> dict:
         tope = self.ajustes["tope_sesion_usd"]
         return {
@@ -926,7 +1023,7 @@ class Estudio:
                 },
                 "clave": self._clave_publica(),
                 "gasto": self._gasto_publico(),
-                "modelo": self.modelo.publico(),
+                "modelo": {**self.modelo.publico(), "medicion": self._medicion_publica()},
                 "trabajos": {tipo: trabajo.publico() for tipo, trabajo in self.trabajos.items()},
                 "fotos": [self._foto_publica(foto, orden) for foto in self.fotos.values()],
             }

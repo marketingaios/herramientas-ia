@@ -17,6 +17,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 from .encuadre import UMBRAL_PRODUCTO, caja_producto
+from .equipo import PROCESADOR
 
 # Los dos únicos modelos que usa la herramienta, con su tamaño de descarga en MB.
 MODELOS = {
@@ -126,6 +127,7 @@ class Recortador:
     """Lo que la cola necesita de un recortador."""
 
     modelo: str = ""
+    acelerador_fallido = False  # se pidió un acelerador, falló y el recortador siguió con el procesador
 
     def descargado(self) -> bool:
         return True
@@ -141,6 +143,10 @@ class Recortador:
 
     def proveedores_activos(self) -> list[str]:
         return []
+
+    def acelerado(self) -> bool:
+        """Si trabaja con un acelerador (CoreML o CUDA) y no con el procesador."""
+        return False
 
 
 class RecortadorSimulado(Recortador):
@@ -194,7 +200,7 @@ def crear_sesion(modelo: str, carpeta_modelos: Path, proveedores: list | None = 
     preparar_entorno(carpeta_modelos)
     import rembg
 
-    return rembg.new_session(modelo, providers=list(proveedores or ["CPUExecutionProvider"]))
+    return rembg.new_session(modelo, providers=list(proveedores or PROCESADOR))
 
 
 class RecortadorRembg(Recortador):
@@ -203,7 +209,8 @@ class RecortadorRembg(Recortador):
     def __init__(self, modelo: str, carpeta_modelos: Path, proveedores: list | None = None) -> None:
         self.modelo = comprobar_modelo(modelo)
         self.carpeta_modelos = Path(carpeta_modelos)
-        self.proveedores = list(proveedores or ["CPUExecutionProvider"])
+        self.proveedores = list(proveedores or PROCESADOR)
+        self.pedidos = list(self.proveedores)  # lo que se pidió al crearlo, aunque después se vuelva al procesador
         self._sesion = None
 
     @property
@@ -245,13 +252,36 @@ class RecortadorRembg(Recortador):
         if not self.descargado():
             raise DescargaFallida()
 
+    def acelerado(self) -> bool:
+        return self.proveedores != PROCESADOR
+
+    def _volver_al_procesador(self) -> None:
+        """El acelerador falló: se sigue con el procesador, sin romper el lote."""
+        self.acelerador_fallido = True
+        self.proveedores = list(PROCESADOR)
+        self._sesion = None
+        self._sesion = crear_sesion(self.modelo, self.carpeta_modelos, self.proveedores)
+
     def preparar(self) -> None:
-        if self._sesion is None:
+        if self._sesion is not None:
+            return
+        try:
             self._sesion = crear_sesion(self.modelo, self.carpeta_modelos, self.proveedores)
+        except Exception:
+            if not self.acelerado():
+                raise
+            self._volver_al_procesador()
 
     def mascara(self, imagen: Image.Image) -> Image.Image:
         self.preparar()
-        return self._sesion.predict(imagen.convert("RGB"))[0]
+        foto = imagen.convert("RGB")
+        try:
+            return self._sesion.predict(foto)[0]
+        except Exception:
+            if not self.acelerado():
+                raise
+            self._volver_al_procesador()
+            return self._sesion.predict(foto)[0]
 
     def proveedores_activos(self) -> list[str]:
         if self._sesion is None:

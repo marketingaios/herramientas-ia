@@ -73,7 +73,7 @@ commit.
 - [x] **Paso 17 · Página · Escenas**: elegir fotos, escena y formato; costo estimado; confirmar; avance; costo real;
       «Para redes y fotos secundarias».
       Prueba: recorrido 4 de `test_e2e.py` (2 escenas con OpenRouter simulado).
-- [ ] **Paso 18 · Aceleración medida**: prueba de CoreML en un subproceso con 2 minutos como máximo, `medicion.json`,
+- [x] **Paso 18 · Aceleración medida**: prueba de CoreML en un subproceso con 2 minutos como máximo, `medicion.json`,
       se queda con lo más rápido.
       Prueba: `test_aceleracion.py` (falla → procesador; tarda demasiado → procesador; más rápida → se elige) y la
       medición real en este computador.

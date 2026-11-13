@@ -227,6 +227,26 @@ La ficha manda; donde no dice nada, elegimos lo más simple:
 33. **Recorte PNG**: del tamaño de la foto original, con transparencia.
 34. **Rutas de más respecto a la ficha**, las mínimas para que la página se pueda usar, cada una con su prueba: quitar
     una foto, empezar de nuevo, borrar la clave, quitar el logo y reintentar la descarga del modelo.
+35. **Cómo se mide la aceleración** (detalle de la decisión 21, escrito al construir el paso 18):
+    - los 2 minutos cubren toda la prueba del acelerador: preparar el modelo con CoreML y recortar una foto. Es más
+      estricto que la ficha (que los pide solo para preparar) y más simple: un solo reloj;
+    - la foto de la prueba se dibuja en el propio proceso (1024×1024, el tamaño con el que trabaja el modelo): no se usa
+      ni se copia ninguna foto del usuario. El tiempo del procesador es la mediana de lo que tardó el modelo en las
+      fotos del primer lote;
+    - se elige CoreML solo si su tiempo por foto es menor que el del procesador. Entonces el modelo se vuelve a
+      preparar con CoreML al empezar el lote siguiente, nunca a mitad de un lote. Si CoreML falla al usarlo de verdad,
+      el recortador vuelve al procesador en esa misma foto y queda anotado para no intentarlo más;
+    - `medicion.json` guarda, por modelo: fecha, acelerador, segundos con el procesador, segundos con el acelerador,
+      con cuál se queda y por qué. Sin rutas. Para volver a medir, se borra ese archivo;
+    - el proceso de la prueba se corta a los 2 minutos, y también al cerrar la herramienta (una prueba cortada así no
+      se guarda: se repite la próxima vez). Por si la herramienta desaparece sin cerrarse, el proceso se pone además su
+      propio límite;
+    - la página lo dice en Ajustes › Calidad del recorte: «Midiendo si la aceleración…» mientras dura, y después lo
+      que salió;
+    - con una tarjeta NVIDIA no hay prueba aparte: CUDA se usa si carga y, si no carga, se sigue con el procesador
+      en el momento y la página lo dice (no hay minutos de preparación que acotar);
+    - las pruebas automáticas no miden solas (`Config.medir` es falso en el modo de pruebas): usan procesos de mentira
+      que fallan, tardan o ganan. La medición de verdad en este computador va con `pytest -m modelo`.
 
 ## 7. Notas del Revisor sobre el plan
 
