@@ -36,6 +36,13 @@ def test_solo_existen_los_dos_modelos_birefnet():
     assert (MODELOS["birefnet-general"]["mb"], MODELOS["birefnet-general-lite"]["mb"]) == (973, 224)
 
 
+def test_rembg_conoce_los_dos_modelos_por_ese_nombre():
+    """Sin descargar nada: los dos nombres existen tal cual en rembg (uno mal escrito fallaría al primer recorte)."""
+    from rembg.sessions import sessions_class
+
+    assert set(MODELOS) <= {clase.name() for clase in sessions_class}
+
+
 @pytest.mark.parametrize("modelo", [None, "", "bria-rmbg", "u2net", "birefnet-portrait", 3])
 def test_cualquier_otro_modelo_se_rechaza_antes_de_tocar_rembg(tmp_path, modelo):
     with pytest.raises(ValueError):
