@@ -19,7 +19,7 @@ commit.
       Prueba: `test_config.py` (carpeta temporal y simulador van juntos o no arranca; el simulador solo en
       `127.0.0.1`), `test_plataformas.py` (las 8 plataformas con los valores de la ficha; un JSON roto da un error
       claro y sin rutas).
-- [ ] **Paso 3 · Subidas**: tipo por contenido, HEIC, peso, lado corto, megapíxeles, foto dañada, nombre limpio.
+- [x] **Paso 3 · Subidas**: tipo por contenido, HEIC, peso, lado corto, megapíxeles, foto dañada, nombre limpio.
       Prueba: `test_subidas.py` (cada mensaje del punto 5; el aviso por debajo de 1.000 px; nombres con rutas).
 - [ ] **Paso 4 · Fondo blanco y encuadre**: blanco 255, centrado, porcentaje, medida, JPEG sRGB, peso, regla de Amazon,
       aviso de ampliación, nombres de archivo.
