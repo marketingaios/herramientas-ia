@@ -87,3 +87,30 @@ def config(carpeta_datos: Path):
     configuracion = para_pruebas(carpeta_datos, openrouter_url=SIN_SERVIDOR)
     configuracion.preparar_carpetas()
     return configuracion
+
+
+@pytest.fixture(scope="session")
+def _simulador_en_marcha():
+    from simulador import Simulador
+
+    simulador = Simulador().arrancar()
+    yield simulador
+    simulador.parar()
+
+
+@pytest.fixture
+def simulador(_simulador_en_marcha, clave_falsa):
+    """El OpenRouter de mentira, recién reiniciado y aceptando la clave falsa de esta ejecución."""
+    _simulador_en_marcha.reiniciar()
+    _simulador_en_marcha.clave = clave_falsa
+    return _simulador_en_marcha
+
+
+@pytest.fixture
+def config_simulador(carpeta_datos: Path, simulador):
+    """Como `config`, pero con OpenRouter apuntando al simulador."""
+    from estudio.config import para_pruebas
+
+    configuracion = para_pruebas(carpeta_datos, openrouter_url=simulador.url)
+    configuracion.preparar_carpetas()
+    return configuracion

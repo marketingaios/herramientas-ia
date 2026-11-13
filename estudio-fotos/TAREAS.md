@@ -39,7 +39,7 @@ commit.
 - [x] **Paso 8 · Clave y ajustes**: `.env` (solo su línea, permisos 600, se lee cada vez), máscara, `ajustes.json`,
       colores `#RRGGBB`, logo validado, calidad del recorte, modelos de escenas y tope de 1 $.
       Prueba: `test_clave.py`, `test_ajustes.py` (con `marca/cafe2600_logo.png` como logo).
-- [ ] **Paso 9 · OpenRouter**: cliente, simulador con el contrato exacto de la ficha, `/key`, errores por código y
+- [x] **Paso 9 · OpenRouter**: cliente, simulador con el contrato exacto de la ficha, `/key`, errores por código y
       campos estructurados, reintentos.
       Prueba: `test_openrouter.py` (éxito; forma exacta de la petición; sin clave; 401; 402; 403 con
       `openrouter_key_limit` y con `openrouter_credits`; 402 en vuelo, con y sin `weight_exceeds_budget`; 403 con
