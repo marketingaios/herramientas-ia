@@ -77,7 +77,7 @@ commit.
       se queda con lo más rápido.
       Prueba: `test_aceleracion.py` (falla → procesador; tarda demasiado → procesador; más rápida → se elige) y la
       medición real en este computador.
-- [ ] **Paso 19 · Documentos**: `README.md`, `CAMBIOS.md`, tabla de `AGENTS.md`, `inicio/index.html`.
+- [x] **Paso 19 · Documentos**: `README.md`, `CAMBIOS.md`, tabla de `AGENTS.md`, `inicio/index.html`.
       Prueba: `test_estructura.py` ampliada (el comando de arranque aparece en `AGENTS.md` y en el `README.md`).
 
 ## Pruebas, revisión y entrega
