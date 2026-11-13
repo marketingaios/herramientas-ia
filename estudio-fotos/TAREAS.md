@@ -57,7 +57,7 @@ commit.
       registro, salida ni página contiene la clave falsa; el 422 no repite la entrada; sin rutas personales),
       `test_codigo.py` (sin `shell=True`, `eval` ni `exec`; las únicas direcciones de internet del código son
       openrouter.ai; el vigilante de los archivos reales).
-- [ ] **Paso 13 · Arranque**: `python -m estudio`: puerto libre, solo `127.0.0.1`, espera, dirección,
+- [x] **Paso 13 · Arranque**: `python -m estudio`: puerto libre, solo `127.0.0.1`, espera, dirección,
       `NO_ABRIR_NAVEGADOR=1`.
       Prueba: `test_arranque.py` (elige el siguiente puerto libre y lo dice; el proceso responde y escribe la
       dirección; no escucha en otras interfaces; con `NO_ABRIR_NAVEGADOR=1` no abre el navegador).
