@@ -86,4 +86,4 @@ commit.
       tardan, el tiempo por foto y la medición de la aceleración.
 - [x] **Paso 21 · Revisión**: el Revisor comprueba los 10 puntos de seguridad y escribe `REVISION.md`; se corrige, se
       vuelven a pasar las pruebas y el Revisor comprueba lo corregido.
-- [ ] **Paso 22 · Demo y entrega**: arrancar la herramienta, dar la dirección y el resumen final.
+- [x] **Paso 22 · Demo y entrega**: arrancar la herramienta, dar la dirección y el resumen final.
