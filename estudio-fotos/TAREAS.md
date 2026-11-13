@@ -70,7 +70,7 @@ commit.
 - [x] **Paso 16 · Página · Ajustes**: clave (••••, Probar, borrar), marca del negocio, calidad del recorte, modelo de
       escenas y tope.
       Prueba: recorrido 3 de `test_e2e.py`.
-- [ ] **Paso 17 · Página · Escenas**: elegir fotos, escena y formato; costo estimado; confirmar; avance; costo real;
+- [x] **Paso 17 · Página · Escenas**: elegir fotos, escena y formato; costo estimado; confirmar; avance; costo real;
       «Para redes y fotos secundarias».
       Prueba: recorrido 4 de `test_e2e.py` (2 escenas con OpenRouter simulado).
 - [ ] **Paso 18 · Aceleración medida**: prueba de CoreML en un subproceso con 2 minutos como máximo, `medicion.json`,

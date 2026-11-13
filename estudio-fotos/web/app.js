@@ -459,6 +459,148 @@
     pintarResumenMedidas();
   });
 
+  // --- Zona Fotos: escenas con IA ---------------------------------------------------------------------------------
+  // Gastar dinero va en dos pasos: «Ver el costo» (no gasta) y, con el costo a la vista, «Sí, generar».
+
+  let estimacion = null; // la última estimación que se le enseñó al usuario, con el pedido tal como se estimó
+  let escenasPedidas = false; // para decir «listo» solo de un lote pedido desde esta página
+
+  function pedidoDeEscenas() {
+    const escena = $("escena").value;
+    return {
+      fotos: fotosElegidas(),
+      escena,
+      formato: $("formato-escena").value,
+      propia: escena === opciones.escena_propia.id ? $("escena-propia").value : null,
+    };
+  }
+
+  /** Si cambia lo que se va a pedir, la estimación ya no vale: hay que volver a ver el costo. */
+  function olvidarEstimacion() {
+    estimacion = null;
+    mostrar($("confirmar-escenas"), false);
+    decir("error-escenas", "");
+    pintarResumenEscenas();
+  }
+
+  function pintarOpcionesDeEscenas() {
+    const escenas = opciones.escenas.map((escena) => {
+      const opcion = crear("option", null, escena.nombre);
+      opcion.value = escena.id;
+      return opcion;
+    });
+    const propia = crear("option", null, "Escribir la mía…");
+    propia.value = opciones.escena_propia.id;
+    $("escena").replaceChildren(...escenas, propia);
+    $("formato-escena").replaceChildren(...opciones.formatos.map((formato) => {
+      const opcion = crear("option", null, formato);
+      opcion.value = formato;
+      return opcion;
+    }));
+    $("escena-propia").maxLength = opciones.escena_propia.maximo;
+    $("marca-escenas").textContent = opciones.marca_escenas;
+    $("nota-escenas").textContent = opciones.nota_escenas;
+    pintarResumenEscenas();
+  }
+
+  function pintarResumenEscenas() {
+    if (!estado || !opciones) return;
+    const fotos = fotosElegidas().length;
+    const trabajando = estado.trabajos.escenas.estado === "trabajando";
+    const modelo = opciones.modelos_escenas.find((m) => m.id === estado.ajustes.modelo_escenas);
+    mostrar($("campo-escena-propia"), $("escena").value === opciones.escena_propia.id);
+    $("ver-costo").disabled = trabajando || !fotos;
+    $("generar-escenas").disabled = trabajando;
+    let resumen = "Marca al menos una foto ya recortada.";
+    if (fotos) {
+      resumen = `${fotos} ${fotos === 1 ? "foto marcada = 1 escena" : `fotos marcadas = ${fotos} escenas`}`;
+      if (modelo) resumen += ` · modelo ${modelo.nombre}`;
+    }
+    $("resumen-escenas").textContent = resumen;
+  }
+  alCambiarSeleccion.push(olvidarEstimacion);
+
+  for (const campo of ["escena", "formato-escena", "escena-propia"]) {
+    $(campo).addEventListener("input", olvidarEstimacion);
+  }
+
+  $("ver-costo").addEventListener("click", async () => {
+    olvidarEstimacion();
+    mostrar($("escenas-listas"), false);
+    escenasPedidas = false;
+    const pedido = pedidoDeEscenas();
+    try {
+      const respuesta = await pedir("POST", "/api/escenas/estimar", pedido);
+      if (!respuesta.se_puede) {
+        // No se gasta: falta la clave, o el costo supera lo que queda del tope de la sesión.
+        decir("error-escenas", `${respuesta.texto.replace(" · ¿Generar?", "")}. ${respuesta.mensaje}`);
+        return;
+      }
+      estimacion = { pedido, costo: respuesta.costo_estimado_usd };
+      $("texto-estimacion").textContent = respuesta.texto;
+      mostrar($("confirmar-escenas"), true);
+      $("generar-escenas").focus();
+    } catch (error) {
+      decir("error-escenas", error.message);
+    }
+  });
+
+  $("cancelar-escenas").addEventListener("click", olvidarEstimacion);
+
+  $("generar-escenas").addEventListener("click", async () => {
+    if (!estimacion) return;
+    const { pedido, costo } = estimacion;
+    $("generar-escenas").disabled = true;
+    try {
+      // Se envía el mismo pedido que se estimó y el costo que vio el usuario: si ya no coincide, el servidor no gasta.
+      await pedir("POST", "/api/escenas", { ...pedido, confirmado: true, costo_estimado_usd: costo });
+      olvidarEstimacion();
+      escenasPedidas = true;
+    } catch (error) {
+      olvidarEstimacion();
+      decir("error-escenas", error.message);
+    }
+    refrescar();
+  });
+
+  $("ir-a-ajustes").addEventListener("click", () => {
+    irA("ajustes");
+    window.scrollTo(0, 0);
+  });
+
+  $("ver-escenas").addEventListener("click", () => {
+    irA("resultados");
+    window.scrollTo(0, 0);
+  });
+
+  pintores.push((actual) => {
+    if (!opciones) return;
+    const trabajo = actual.trabajos.escenas;
+    mostrar($("tarjeta-escenas"), actual.fotos.some((foto) => foto.estado === "lista"));
+    $("texto-escenas-sin-clave").textContent = "Para las escenas con IA hace falta una clave de OpenRouter.";
+    mostrar($("escenas-sin-clave"), !actual.clave.guardada);
+    pintarAvance(trabajo, { caja: "avance-escenas", barra: "barra-escenas", texto: "texto-escenas", errores: "errores-escenas" });
+
+    const terminado = trabajo.estado === "terminado";
+    // Si el lote se detuvo (sin saldo, sin conexión, tope de la sesión…), se dice por qué.
+    $("escenas-detenidas").textContent = terminado && trabajo.detenido ? `El lote se detuvo. ${trabajo.mensaje || ""}`.trim() : "";
+    mostrar($("escenas-detenidas"), terminado && Boolean(trabajo.detenido));
+
+    const listo = escenasPedidas && terminado;
+    if (listo) {
+      const hechas = trabajo.hechas;
+      let texto = hechas === 0 ? "No se generó ninguna escena" : `Listo: ${hechas} ${hechas === 1 ? "escena" : "escenas"}`;
+      texto += ` · costo real ${trabajo.costo_real} (estimado ${trabajo.costo_estimado}).`;
+      if (trabajo.costo_sin_informar) texto += " OpenRouter no informó el costo de alguna escena: se cuenta el estimado.";
+      texto += ` En esta sesión llevas ${actual.gasto.sesion} de ${actual.gasto.tope}.`;
+      $("texto-escenas-listas").textContent = texto;
+      $("escenas-listas").className = hechas > 0 ? "nota nota-bien fila-entre" : "nota fila-entre";
+      mostrar($("ver-escenas"), hechas > 0);
+    }
+    mostrar($("escenas-listas"), listo);
+    pintarResumenEscenas();
+  });
+
   // --- Zona Resultados: una cuadrícula por foto y las descargas ---------------------------------------------------
 
   let resultadosPintados = "";
@@ -528,6 +670,16 @@
           avisos: salida.avisos,
         }));
       }
+      for (const escena of foto.escenas || []) {
+        lista.append(crearResultado({
+          titulo: `Escena: ${escena.escena}`,
+          archivo: escena.archivo,
+          datos: `${escena.formato} · ${escena.medida} · ${escena.peso_texto} · costo ${escena.costo}`,
+          url: escena.url,
+          avisos: escena.aviso ? [escena.aviso] : [],
+          marca: escena.marca, // «Para redes y fotos secundarias»
+        }));
+      }
       bloque.append(lista);
       return bloque;
     });
@@ -537,7 +689,9 @@
     const nombres = new Map();
     for (const foto of conResultados) for (const salida of foto.salidas) nombres.set(salida.plataforma, salida.nombre_plataforma);
     for (const [id, nombre] of nombres) botones.push(botonDescarga(`Solo ${nombre}`, id));
-    if (nombres.size > 0) botones.push(botonDescarga("Solo los recortes", "recortes"));
+    const hayEscenas = conResultados.some((foto) => (foto.escenas || []).length > 0);
+    if (nombres.size > 0 || hayEscenas) botones.push(botonDescarga("Solo los recortes", "recortes"));
+    if (hayEscenas) botones.push(botonDescarga("Solo las escenas", "escenas"));
     $("botones-descarga").replaceChildren(...botones);
   });
 
@@ -686,6 +840,7 @@
     try {
       opciones = await pedir("GET", "/api/opciones");
       pintarPlataformas();
+      pintarOpcionesDeEscenas();
       pintarModelosDeEscenas();
       if (estado) for (const pintar of pintores) pintar(estado);
     } catch (error) {

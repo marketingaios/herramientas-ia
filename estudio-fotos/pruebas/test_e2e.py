@@ -334,3 +334,172 @@ def test_3_ajustes_la_clave_se_ve_enmascarada_y_probar_dice_conexion_correcta(pa
     # Las fotos y sus resultados siguen en la sesión.
     pagina.click(".zona-boton[data-zona='fotos']")
     expect(pagina.locator("#lista-fotos .foto")).to_have_count(5)
+
+
+def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagina, entorno):
+    import json
+
+    from playwright.sync_api import expect
+
+    from estudio import escenas
+
+    simulador = entorno.simulador
+    simulador.costo = 0.05  # el costo real de cada imagen: distinto del de partida (0,04 $), para ver que se muestra
+    gastos = entorno.datos / "estudio-fotos" / "gastos.jsonl"
+    fotos = [ruta.stem for ruta in sorted(MUESTRAS.glob("*.jpg"))]
+    antes = len(simulador.peticiones)
+
+    # La tarjeta de escenas, con su marca. Se dejan marcadas 2 fotos: una escena por foto.
+    pagina.click(".zona-boton[data-zona='fotos']")
+    expect(pagina.locator("#tarjeta-escenas")).to_be_visible()
+    expect(pagina.locator("#marca-escenas")).to_have_text("Para redes y fotos secundarias")
+    expect(pagina.locator("#nota-escenas")).to_have_text("Mercado Libre, Amazon y Google piden fondo blanco en la foto principal.")
+    expect(pagina.locator("#escenas-sin-clave")).to_be_hidden()  # la clave se guardó en el recorrido 3
+    expect(pagina.locator("#escena option")).to_have_text([
+        "Mesa de madera clara con luz de mañana", "Cocina moderna, encimera de piedra",
+        "Fondo liso con los colores de tu marca", "Exterior con luz natural suave", "Estudio con sombra suave",
+        "Escribir la mía…",
+    ])
+    expect(pagina.locator("#formato-escena option")).to_have_text(["1:1", "4:5", "16:9"])
+    expect(pagina.locator("#resumen-escenas")).to_contain_text("5 fotos marcadas = 5 escenas")
+    for indice in (2, 3, 4):
+        pagina.locator("#lista-fotos .foto").nth(indice).locator(".foto-usar input").uncheck()
+    expect(pagina.locator("#resumen-escenas")).to_have_text("2 fotos marcadas = 2 escenas · modelo Nano Banana 2.1 (recomendado)")
+    pagina.select_option("#escena", "propia")
+    expect(pagina.locator("#campo-escena-propia")).to_be_visible()  # el campo para escribir la tuya
+    pagina.select_option("#escena", "mesa-madera")
+    expect(pagina.locator("#campo-escena-propia")).to_be_hidden()
+    pagina.select_option("#formato-escena", "4:5")
+
+    # Antes de gastar: el costo estimado, y hay que confirmar. Todavía no se ha pedido ni anotado nada.
+    expect(pagina.locator("#confirmar-escenas")).to_be_hidden()
+    pagina.click("#ver-costo")
+    expect(pagina.locator("#texto-estimacion")).to_have_text("2 escenas · costo estimado 0,08 $ · ¿Generar?")
+    expect(pagina.locator("#generar-escenas")).to_be_visible()
+    _captura(pagina, "4-estimacion")
+    assert len(simulador.peticiones) == antes and not gastos.exists()
+
+    # Si cambia lo que se va a pedir, la confirmación desaparece: hay que volver a ver el costo.
+    pagina.select_option("#formato-escena", "1:1")
+    expect(pagina.locator("#confirmar-escenas")).to_be_hidden()
+    pagina.select_option("#formato-escena", "4:5")
+    pagina.click("#ver-costo")
+    expect(pagina.locator("#texto-estimacion")).to_have_text("2 escenas · costo estimado 0,08 $ · ¿Generar?")
+    assert len(simulador.peticiones) == antes
+
+    # Confirma: la barra de avance y, al terminar, el costo real.
+    pagina.click("#generar-escenas")
+    expect(pagina.locator("#avance-escenas")).to_be_visible()
+    expect(pagina.locator("#texto-escenas")).to_contain_text("2 de 2 · listo", timeout=60_000)
+    expect(pagina.locator("#texto-escenas-listas")).to_have_text(
+        "Listo: 2 escenas · costo real 0,10 $ (estimado 0,08 $). En esta sesión llevas 0,10 $ de 2,00 $."
+    )
+    expect(pagina.locator("#errores-escenas")).to_be_hidden()
+    expect(pagina.locator("#escenas-detenidas")).to_be_hidden()
+    expect(pagina.locator("#confirmar-escenas")).to_be_hidden()
+    _captura(pagina, "4-escenas-listas")
+
+    # A OpenRouter (simulado) se le preguntó cuánto queda en la clave y se le pidieron exactamente 2 imágenes.
+    nuevas = simulador.peticiones[antes:]
+    assert [(p["metodo"], p["ruta"], p["autorizada"]) for p in nuevas] == [
+        ("GET", "/api/v1/key", True), ("POST", "/api/v1/images", True), ("POST", "/api/v1/images", True),
+    ]
+    assert simulador.violaciones == []
+    for peticion in nuevas[1:]:
+        cuerpo = peticion["cuerpo"]
+        assert (cuerpo["model"], cuerpo["aspect_ratio"], cuerpo["resolution"]) == ("google/gemini-nano-banana-2.1", "4:5", "1K")
+        assert "mesa de madera clara" in cuerpo["prompt"] and "Usa exactamente ese producto" in cuerpo["prompt"]
+
+    # Cada gasto quedó anotado (en la carpeta temporal), sin la clave.
+    texto_gastos = gastos.read_text(encoding="utf-8")
+    lineas = [json.loads(linea) for linea in texto_gastos.splitlines()]
+    assert len(lineas) == 2 and entorno.clave not in texto_gastos and "sk-or-" not in texto_gastos
+    for linea in lineas:
+        assert set(linea) == {"ts", "modelo", "imagenes", "costo_estimado_usd", "costo_usd"}
+        assert (linea["modelo"], linea["imagenes"], linea["costo_estimado_usd"], linea["costo_usd"]) == (
+            "google/gemini-nano-banana-2.1", 1, 0.04, 0.05)
+        assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", linea["ts"])
+
+    # Resultados: las 2 escenas, cada una en la cuadrícula de su foto y marcadas «Para redes y fotos secundarias».
+    pagina.click("#ver-escenas")
+    expect(pagina.locator("#zona-resultados")).to_be_visible()
+    bloques = pagina.locator("#lista-resultados .resultado-foto")
+    expect(pagina.locator("#lista-resultados .resultado .chip")).to_have_count(2)
+    archivos_escena = []
+    for indice, foto in enumerate(fotos):
+        bloque = bloques.nth(indice)
+        titulos = bloque.locator(".resultado-titulo").all_inner_texts()
+        if indice >= 2:
+            assert titulos == ["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)"]
+            continue
+        assert titulos == ["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)", "Escena: Mesa de madera clara con luz de mañana"]
+        escena = bloque.locator(".resultado").last
+        expect(escena.locator(".chip")).to_have_text("Para redes y fotos secundarias")
+        archivo = escena.locator(".resultado-archivo").inner_text()
+        medida = re.fullmatch(rf"{foto}_escena_mesa-madera_(\d+)x(\d+)\.jpg", archivo)
+        assert medida, archivo
+        ancho, alto = int(medida[1]), int(medida[2])
+        assert ancho * 5 == alto * 4 or abs(ancho / alto - 4 / 5) < 0.002, archivo  # el formato pedido: 4:5
+        expect(escena.locator(".resultado-datos")).to_have_text(re.compile(rf"^4:5 · {ancho}×{alto} · .+ · costo 0,05 \$$"))
+        pagina.wait_for_function("img => img.complete && img.naturalWidth > 0", arg=escena.locator("img").element_handle())
+        archivos_escena.append(archivo)
+    _captura(pagina, "4-resultados")
+
+    # La descarga de las escenas: llevan la marca IPTC de imagen hecha con IA y nada del modelo.
+    with _descargar(pagina, pagina.get_by_role("link", name="Solo las escenas")) as archivo_zip:
+        nombres = sorted(archivo_zip.namelist())
+        assert nombres == sorted([f"escenas/{archivo}" for archivo in archivos_escena] + ["resumen.csv"])
+        filas = list(csv.DictReader(io.StringIO(archivo_zip.read("resumen.csv").decode("utf-8-sig"))))
+        assert len(filas) == 2
+        for archivo in archivos_escena:
+            datos = archivo_zip.read(f"escenas/{archivo}")
+            assert escenas.tiene_marca(datos)
+            assert b"http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia" in datos
+            with Image.open(io.BytesIO(datos)) as imagen:
+                assert imagen.format == "JPEG" and imagen.mode == "RGB"
+                assert archivo.endswith(f"_{imagen.width}x{imagen.height}.jpg")
+    with _descargar(pagina, pagina.get_by_role("link", name="Descargar todo (ZIP)")) as archivo_zip:
+        assert len(archivo_zip.namelist()) == 23  # 5 recortes, 15 medidas, 2 escenas y el resumen
+
+    # El gasto de la sesión se ve en Ajustes.
+    pagina.click(".zona-boton[data-zona='ajustes']")
+    expect(pagina.locator("#gasto-sesion")).to_have_text("Gastado en esta sesión: 0,10 $ de 2,00 $ (quedan 1,90 $).")
+
+    # La siguiente estimación ya usa el costo real medio (0,05 $ por imagen). Con «No, cancelar» no se gasta.
+    pagina.click(".zona-boton[data-zona='fotos']")
+    pagina.click("#ver-costo")
+    expect(pagina.locator("#texto-estimacion")).to_have_text("2 escenas · costo estimado 0,10 $ · ¿Generar?")
+    pagina.click("#cancelar-escenas")
+    expect(pagina.locator("#confirmar-escenas")).to_be_hidden()
+
+    # Si la estimación supera lo que queda del tope de la sesión, no se gasta y la página lo dice.
+    pagina.click(".zona-boton[data-zona='ajustes']")
+    pagina.fill("#tope-sesion", "0.15")
+    pagina.click("#guardar-ajustes")
+    expect(pagina.locator("#gasto-sesion")).to_have_text("Gastado en esta sesión: 0,10 $ de 0,15 $ (quedan 0,05 $).")
+    pagina.click(".zona-boton[data-zona='fotos']")
+    pagina.click("#ver-costo")
+    expect(pagina.locator("#error-escenas")).to_have_text(
+        "2 escenas · costo estimado 0,10 $. Esto costaría 0,10 $ y en esta sesión te quedan 0,05 $. "
+        "Sube el tope en Ajustes o genera menos escenas."
+    )
+    expect(pagina.locator("#confirmar-escenas")).to_be_hidden()
+    _captura(pagina, "4-tope")
+    assert len(simulador.peticiones) == antes + 3 and len(gastos.read_text(encoding="utf-8").splitlines()) == 2
+
+
+def test_5_la_pagina_no_cargo_nada_de_internet_ni_dio_errores(pagina, entorno):
+    """En todos los recorridos, cada petición del navegador fue a este computador, y la consola quedó limpia."""
+    assert len(entorno.peticiones) > 50
+    fuera = [url for url in entorno.peticiones if not url.startswith(entorno.url + "/")]
+    assert fuera == [], fuera[:5]
+    assert entorno.errores == [], entorno.errores[:5]
+    assert entorno.clave not in pagina.content()
+    # Y a OpenRouter (simulado) solo se le llamó cuando el usuario lo pidió: probar la clave y generar 2 escenas.
+    assert [p["ruta"] for p in entorno.simulador.peticiones] == [
+        "/api/v1/key", "/api/v1/key", "/api/v1/images", "/api/v1/images",
+    ]
+    # La salida del servidor no lleva la clave ni rutas de la carpeta personal.
+    salida = entorno.proceso.salida()
+    assert "Estudio de fotos abierto en " in salida
+    assert entorno.clave not in salida and str(Path.home()) not in salida and "Traceback" not in salida

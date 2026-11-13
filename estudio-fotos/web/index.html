@@ -108,6 +108,59 @@
             <button type="button" class="boton" id="ver-resultados">Ver resultados</button>
           </div>
         </div>
+
+        <div class="tarjeta" id="tarjeta-escenas" hidden>
+          <div class="fila-entre">
+            <h2>4 · Escenas con IA (opcional)</h2>
+            <span class="chip" id="marca-escenas"></span>
+          </div>
+          <p class="ayuda">
+            Coloca tu producto en una escena. Cada foto marcada da una escena, y cada escena cuesta dinero: antes de
+            gastar verás el costo estimado y tendrás que confirmarlo. <span id="nota-escenas"></span>
+          </p>
+          <div class="nota nota-aviso fila-entre" id="escenas-sin-clave" hidden>
+            <span id="texto-escenas-sin-clave"></span>
+            <button type="button" class="boton" id="ir-a-ajustes">Ir a Ajustes</button>
+          </div>
+          <div class="fila-campos">
+            <label class="campo campo-ancho">
+              <span>Escena</span>
+              <select id="escena"></select>
+            </label>
+            <label class="campo">
+              <span>Formato</span>
+              <select id="formato-escena"></select>
+            </label>
+          </div>
+          <label class="campo" id="campo-escena-propia" hidden>
+            <span>Describe tu escena</span>
+            <textarea id="escena-propia" rows="2" placeholder="Por ejemplo: sobre una manta de picnic, en un parque, al atardecer"></textarea>
+          </label>
+          <div class="fila">
+            <button type="button" class="boton boton-principal" id="ver-costo">Ver el costo</button>
+            <span class="ayuda" id="resumen-escenas"></span>
+          </div>
+          <p class="nota nota-error" id="error-escenas" hidden></p>
+          <div class="nota fila-entre confirmar" id="confirmar-escenas" hidden>
+            <strong id="texto-estimacion"></strong>
+            <span class="fila">
+              <button type="button" class="boton boton-principal" id="generar-escenas">Sí, generar</button>
+              <button type="button" class="boton" id="cancelar-escenas">No, cancelar</button>
+            </span>
+          </div>
+          <div class="avance" id="avance-escenas" hidden>
+            <div class="barra" role="progressbar" aria-label="Avance de las escenas" aria-valuemin="0" aria-valuemax="100">
+              <div id="barra-escenas"></div>
+            </div>
+            <p class="avance-texto" id="texto-escenas"></p>
+            <ul class="lista-notas" id="errores-escenas" hidden></ul>
+          </div>
+          <p class="nota nota-aviso" id="escenas-detenidas" hidden></p>
+          <div class="nota fila-entre" id="escenas-listas" hidden>
+            <span id="texto-escenas-listas"></span>
+            <button type="button" class="boton" id="ver-escenas">Ver resultados</button>
+          </div>
+        </div>
       </section>
 
       <!-- Zona Resultados -------------------------------------------------------------------------------------- -->
