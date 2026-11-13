@@ -17,7 +17,9 @@ from typing import Callable
 
 from PIL import Image
 
-from . import HERRAMIENTA, VERSION, descargas, equipo
+from . import HERRAMIENTA, VERSION, costos, descargas, equipo
+from . import ajustes as los_ajustes
+from . import clave as la_clave
 from .config import Config
 from .encuadre import Salida, exportar
 from .plataformas import ErrorPlataformas, Plataforma
@@ -182,7 +184,8 @@ class Estudio:
         self.fotos: dict[str, Foto] = {}
         self.trabajos = {tipo: Trabajo(tipo) for tipo in ("recorte", "medidas", "escenas")}
         self.modelo = EstadoModelo()
-        self.calidad_recorte = "automatica"
+        self.ajustes = los_ajustes.cargar(config.ajustes)
+        self.calidad_recorte = self.ajustes["calidad_recorte"]
         self.aviso_puerto: str | None = None
         self.sesion = ""
         self._nueva_sesion()
@@ -306,6 +309,58 @@ class Estudio:
             self.modelo.estado, self.modelo.mensaje = "error", mensaje
             self.trabajos["recorte"].mensaje = mensaje
             self._modelo_bloqueado = True
+
+    # --- Ajustes y clave -----------------------------------------------------------------------------------------
+
+    def cambiar_ajustes(self, cambios: object) -> None:
+        """Guarda en `ajustes.json` la marca, la calidad del recorte, el modelo de escenas y el tope (nunca la clave)."""
+        try:
+            with self._candado:
+                nuevos = los_ajustes.aplicar(self.ajustes, cambios)
+                los_ajustes.guardar(self.config.ajustes, nuevos)
+                self.ajustes = nuevos
+        except los_ajustes.ErrorAjustes as error:
+            raise ErrorEstudio(str(error))
+        if nuevos["calidad_recorte"] != self.calidad_recorte:
+            self.cambiar_calidad(nuevos["calidad_recorte"])
+
+    def guardar_logo(self, origen: Path) -> None:
+        try:
+            los_ajustes.guardar_logo(origen, self.config.logo)
+        except los_ajustes.ErrorAjustes as error:
+            raise ErrorEstudio(str(error))
+
+    def quitar_logo(self) -> None:
+        self.config.logo.unlink(missing_ok=True)
+
+    def guardar_clave(self, clave: object) -> None:
+        """Escribe la clave en `.env`. Desde aquí no vuelve a salir entera."""
+        try:
+            la_clave.guardar(self.config.env, clave)
+        except la_clave.ErrorClave as error:
+            raise ErrorEstudio(str(error))
+        registro.info("Clave de OpenRouter guardada")
+
+    def borrar_clave(self) -> None:
+        la_clave.borrar(self.config.env)
+
+    def clave(self) -> str | None:
+        """La clave, leída del `.env` en este momento. Solo para llamar a OpenRouter: nunca para mostrarla."""
+        return la_clave.leer(self.config.env)
+
+    def _clave_publica(self) -> dict:
+        clave = self.clave()
+        return {"guardada": clave is not None, "mascara": la_clave.mascara(clave) if clave else None}
+
+    def _negocio_publico(self) -> dict:
+        negocio = dict(self.ajustes["negocio"])
+        negocio["sobre_principal"] = los_ajustes.color_sobre(negocio["color_principal"])
+        negocio["sobre_acento"] = los_ajustes.color_sobre(negocio["color_acento"])
+        try:
+            negocio["logo"] = f"/api/logo?v={self.config.logo.stat().st_mtime_ns}"
+        except OSError:
+            negocio["logo"] = None
+        return negocio
 
     # --- Fotos ---------------------------------------------------------------------------------------------------
 
@@ -621,6 +676,14 @@ class Estudio:
                 "herramienta": HERRAMIENTA,
                 "version": VERSION,
                 "aviso_puerto": self.aviso_puerto,
+                "negocio": self._negocio_publico(),
+                "ajustes": {
+                    "calidad_recorte": self.ajustes["calidad_recorte"],
+                    "modelo_escenas": self.ajustes["modelo_escenas"],
+                    "tope_sesion_usd": self.ajustes["tope_sesion_usd"],
+                    "tope_texto": costos.dolares(self.ajustes["tope_sesion_usd"]),
+                },
+                "clave": self._clave_publica(),
                 "modelo": self.modelo.publico(),
                 "trabajos": {tipo: trabajo.publico() for tipo, trabajo in self.trabajos.items()},
                 "fotos": [self._foto_publica(foto) for foto in self.fotos.values()],

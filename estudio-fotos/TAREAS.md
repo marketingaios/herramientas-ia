@@ -35,8 +35,8 @@ commit.
       Prueba: `test_cola.py`.
 - [x] **Paso 7 · Medidas en lote, resultados y descarga**: medidas por foto y plataforma, ZIP de todo o de una
       plataforma, `resumen.csv`.
-      Prueba: `test_medidas.py`, `test_descargas.py`.
-- [ ] **Paso 8 · Clave y ajustes**: `.env` (solo su línea, permisos 600, se lee cada vez), máscara, `ajustes.json`,
+      Prueba: `test_medidas.py` (el lote de medidas y la descarga).
+- [x] **Paso 8 · Clave y ajustes**: `.env` (solo su línea, permisos 600, se lee cada vez), máscara, `ajustes.json`,
       colores `#RRGGBB`, logo validado, calidad del recorte, modelos de escenas y tope de 1 $.
       Prueba: `test_clave.py`, `test_ajustes.py` (con `marca/cafe2600_logo.png` como logo).
 - [ ] **Paso 9 · OpenRouter**: cliente, simulador con el contrato exacto de la ficha, `/key`, errores por código y
