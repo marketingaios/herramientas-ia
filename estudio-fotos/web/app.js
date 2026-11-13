@@ -541,12 +541,153 @@
     $("botones-descarga").replaceChildren(...botones);
   });
 
+  // --- Zona Ajustes -----------------------------------------------------------------------------------------------
+
+  /** Escribe el resultado de una acción (bien o error) en una nota. */
+  function decir(id, texto, clase) {
+    const nota = $(id);
+    nota.textContent = texto || "";
+    if (clase !== undefined) nota.className = `nota ${clase}`.trim();
+    mostrar(nota, Boolean(texto));
+  }
+
+  // La clave: se envía una vez para guardarla y no vuelve nunca; la página solo recibe «••••» y los 4 últimos.
+  $("guardar-clave").addEventListener("click", async () => {
+    const campo = $("clave");
+    try {
+      await pedir("PUT", "/api/ajustes/clave", { clave: campo.value });
+      campo.value = "";
+      decir("resultado-clave", "Clave guardada. Pulsa «Probar» para comprobar la conexión.", "nota-bien");
+    } catch (error) {
+      decir("resultado-clave", error.message, "nota-error");
+    }
+    refrescar();
+  });
+
+  $("probar-clave").addEventListener("click", async () => {
+    decir("resultado-clave", "Probando la conexión con OpenRouter…", "");
+    $("probar-clave").disabled = true;
+    try {
+      const respuesta = await pedir("POST", "/api/ajustes/clave/probar");
+      decir("resultado-clave", respuesta.mensaje, "nota-bien");
+    } catch (error) {
+      decir("resultado-clave", error.message, "nota-error");
+    }
+    $("probar-clave").disabled = false;
+  });
+
+  $("borrar-clave").addEventListener("click", async () => {
+    try {
+      await pedir("DELETE", "/api/ajustes/clave");
+      decir("resultado-clave", "Clave borrada de este computador.", "");
+    } catch (error) {
+      decir("resultado-clave", error.message, "nota-error");
+    }
+    refrescar();
+  });
+
+  pintores.push((actual) => {
+    mostrar($("clave-guardada"), actual.clave.guardada);
+    $("mascara-clave").textContent = actual.clave.mascara || "";
+    $("etiqueta-clave").textContent = actual.clave.guardada ? "Cambiar la clave" : "Pega aquí tu clave";
+    $("gasto-sesion").textContent =
+      `Gastado en esta sesión: ${actual.gasto.sesion} de ${actual.gasto.tope} (quedan ${actual.gasto.queda}).`;
+  });
+
+  // El resto de ajustes: se rellenan una vez (y después de guardar), para no pisar lo que el usuario está escribiendo.
+  let ajustesRellenos = false;
+
+  function rellenarAjustes(actual) {
+    $("negocio-nombre").value = actual.negocio.nombre;
+    $("negocio-color-principal").value = actual.negocio.color_principal.toLowerCase();
+    $("negocio-color-acento").value = actual.negocio.color_acento.toLowerCase();
+    for (const radio of document.querySelectorAll('input[name="calidad"]')) {
+      radio.checked = radio.value === actual.ajustes.calidad_recorte;
+    }
+    $("modelo-escenas").value = actual.ajustes.modelo_escenas;
+    $("tope-sesion").value = String(actual.ajustes.tope_sesion_usd);
+    ajustesRellenos = true;
+  }
+
+  function pintarModelosDeEscenas() {
+    const lista = $("modelo-escenas");
+    lista.replaceChildren(...opciones.modelos_escenas.map((modelo) => {
+      const opcion = crear("option", null, `${modelo.nombre} · ${modelo.costo_partida} por imagen`);
+      opcion.value = modelo.id;
+      return opcion;
+    }));
+    if (estado) lista.value = estado.ajustes.modelo_escenas;
+  }
+
+  pintores.push((actual) => {
+    if (!ajustesRellenos && opciones) rellenarAjustes(actual);
+    const logo = $("vista-logo");
+    if (actual.negocio.logo && logo.getAttribute("src") !== actual.negocio.logo) logo.src = actual.negocio.logo;
+    mostrar(logo, Boolean(actual.negocio.logo));
+    mostrar($("quitar-logo"), Boolean(actual.negocio.logo));
+    $("boton-logo").textContent = actual.negocio.logo ? "Cambiar el logo" : "Elegir un logo (opcional)";
+  });
+
+  $("guardar-ajustes").addEventListener("click", async () => {
+    mostrar($("ajustes-guardados"), false);
+    const calidad = document.querySelector('input[name="calidad"]:checked');
+    const tope = Number($("tope-sesion").value.replace(",", "."));
+    try {
+      if ($("tope-sesion").value.trim() === "" || Number.isNaN(tope)) {
+        throw new Error("El tope de gasto debe ser un número, por ejemplo 1.");
+      }
+      await pedir("PUT", "/api/ajustes", {
+        negocio: {
+          nombre: $("negocio-nombre").value,
+          color_principal: $("negocio-color-principal").value,
+          color_acento: $("negocio-color-acento").value,
+        },
+        calidad_recorte: calidad ? calidad.value : "automatica",
+        modelo_escenas: $("modelo-escenas").value,
+        tope_sesion_usd: tope,
+      });
+      decir("error-ajustes", "");
+      mostrar($("ajustes-guardados"), true);
+      ajustesRellenos = false; // se vuelven a leer tal como quedaron guardados
+    } catch (error) {
+      decir("error-ajustes", error.message);
+    }
+    refrescar();
+  });
+
+  $("elegir-logo").addEventListener("change", async () => {
+    const archivo = $("elegir-logo").files[0];
+    if (!archivo) return;
+    const formulario = new FormData();
+    formulario.append("logo", archivo, archivo.name);
+    try {
+      await pedir("POST", "/api/ajustes/logo", formulario);
+      decir("error-logo", "");
+    } catch (error) {
+      decir("error-logo", error.message);
+    }
+    $("elegir-logo").value = "";
+    refrescar();
+  });
+
+  $("quitar-logo").addEventListener("click", async () => {
+    try {
+      await pedir("DELETE", "/api/ajustes/logo");
+      decir("error-logo", "");
+    } catch (error) {
+      decir("error-logo", error.message);
+    }
+    refrescar();
+  });
+
   // --- Arranque ---------------------------------------------------------------------------------------------------
 
   async function cargarOpciones() {
     try {
       opciones = await pedir("GET", "/api/opciones");
       pintarPlataformas();
+      pintarModelosDeEscenas();
+      if (estado) for (const pintar of pintores) pintar(estado);
     } catch (error) {
       setTimeout(cargarOpciones, 2000);
     }

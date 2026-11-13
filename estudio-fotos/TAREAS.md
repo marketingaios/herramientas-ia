@@ -67,7 +67,7 @@ commit.
 - [x] **Paso 15 · Página · Medidas y Resultados**: selector de plataformas, generar, cuadrícula por foto, avisos por
       archivo, descarga de todo o por plataforma.
       Prueba: recorrido 2 de `test_e2e.py` (Mercado Libre, Amazon e Instagram; ZIP comprobado).
-- [ ] **Paso 16 · Página · Ajustes**: clave (••••, Probar, borrar), marca del negocio, calidad del recorte, modelo de
+- [x] **Paso 16 · Página · Ajustes**: clave (••••, Probar, borrar), marca del negocio, calidad del recorte, modelo de
       escenas y tope.
       Prueba: recorrido 3 de `test_e2e.py`.
 - [ ] **Paso 17 · Página · Escenas**: elegir fotos, escena y formato; costo estimado; confirmar; avance; costo real;

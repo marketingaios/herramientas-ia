@@ -511,6 +511,64 @@ code {
   font-size: 13px;
 }
 
+/* Ajustes */
+.fila-campos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+.campo-ancho {
+  flex: 1 1 260px;
+}
+
+input[type="color"] {
+  width: 96px;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: var(--superficie);
+  cursor: pointer;
+}
+
+.vista-logo {
+  height: 48px;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  background: #ffffff;
+  padding: 4px;
+}
+
+.opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.opcion {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  cursor: pointer;
+}
+
+.opcion:has(input:checked) {
+  border-color: var(--color-acento);
+  background: color-mix(in srgb, var(--color-acento) 6%, var(--superficie));
+}
+
+.opcion input {
+  margin-top: 2px;
+}
+
 @media (max-width: 640px) {
   .cabecera-dentro {
     align-items: flex-start;

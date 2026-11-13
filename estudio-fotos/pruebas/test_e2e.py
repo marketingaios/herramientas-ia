@@ -22,7 +22,7 @@ import pytest
 from PIL import Image
 
 import ayudas
-from conftest import MUESTRAS
+from conftest import MUESTRAS, RAIZ
 
 pytestmark = pytest.mark.e2e
 
@@ -262,3 +262,75 @@ def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
     expect(pagina.locator("footer.firma")).to_be_visible()
     pagina.click(".zona-boton[data-zona='fotos']")
     expect(pagina.locator("#zona-fotos")).to_be_visible()
+
+
+def test_3_ajustes_la_clave_se_ve_enmascarada_y_probar_dice_conexion_correcta(pagina, entorno):
+    import json
+
+    from playwright.sync_api import expect
+
+    clave = entorno.clave
+    pagina.click(".zona-boton[data-zona='ajustes']")
+    expect(pagina.locator("#zona-ajustes")).to_be_visible()
+    expect(pagina.locator("#clave-guardada")).to_be_hidden()
+    expect(pagina.locator("#clave")).to_have_attribute("type", "password")  # un campo de tipo contraseña
+
+    # Guarda una clave falsa: después se ve «••••» y los 4 últimos caracteres, nunca entera.
+    pagina.fill("#clave", clave)
+    pagina.click("#guardar-clave")
+    expect(pagina.locator("#mascara-clave")).to_have_text("••••" + clave[-4:])
+    expect(pagina.locator("#clave")).to_have_value("")
+    assert clave not in pagina.content() and clave[:20] not in pagina.content()
+    assert clave not in pagina.evaluate("() => JSON.stringify([...document.querySelectorAll('input')].map(i => i.value))")
+
+    # Probar (con OpenRouter simulado).
+    pagina.click("#probar-clave")
+    expect(pagina.locator("#resultado-clave")).to_have_text("Conexión correcta · límite 2,00 $ · usado 0,12 $")
+    assert [(p["metodo"], p["ruta"], p["autorizada"]) for p in entorno.simulador.peticiones] == [("GET", "/api/v1/key", True)]
+    _captura(pagina, "3-ajustes-clave")
+
+    # La clave quedó en el archivo de claves de la carpeta temporal (solo su línea) y no en los ajustes.
+    assert (entorno.datos / ".env").read_text(encoding="utf-8") == f"OPENROUTER_API_KEY={clave}\n"
+
+    # La marca del negocio: nombre, colores y logo. La página usa esos colores.
+    pagina.fill("#negocio-nombre", "Café 2600")
+    for campo, color in (("#negocio-color-principal", "#1f3b2d"), ("#negocio-color-acento", "#c8a04b")):
+        pagina.locator(campo).evaluate(
+            "(campo, color) => { campo.value = color; campo.dispatchEvent(new Event('input', {bubbles: true})); }", color
+        )
+    pagina.set_input_files("#elegir-logo", str(RAIZ / "marca" / "cafe2600_logo.png"))
+    expect(pagina.locator("#vista-logo")).to_be_visible()
+    pagina.check("input[name='calidad'][value='maxima']")
+    pagina.select_option("#modelo-escenas", "google/gemini-nano-banana-2.1")
+    pagina.fill("#tope-sesion", "2")
+    pagina.click("#guardar-ajustes")
+    expect(pagina.locator("#ajustes-guardados")).to_be_visible()
+    expect(pagina.locator("#nombre-negocio")).to_have_text("Café 2600")
+    expect(pagina.locator("#logo-negocio")).to_be_visible()
+    expect(pagina.locator("#gasto-sesion")).to_have_text("Gastado en esta sesión: 0,00 $ de 2,00 $ (quedan 2,00 $).")
+    variable = "(nombre) => getComputedStyle(document.documentElement).getPropertyValue(nombre).trim()"
+    assert pagina.evaluate(variable, "--color-principal") == "#1F3B2D"
+    assert pagina.evaluate(variable, "--color-acento") == "#C8A04B"
+    assert pagina.evaluate("() => getComputedStyle(document.querySelector('.cabecera')).backgroundColor") == "rgb(31, 59, 45)"
+    expect(pagina).to_have_title("Estudio de fotos · Café 2600")
+    _captura(pagina, "3-ajustes-marca")
+
+    guardado = json.loads((entorno.datos / "estudio-fotos" / "ajustes.json").read_text(encoding="utf-8"))
+    assert guardado == {
+        "negocio": {"nombre": "Café 2600", "color_principal": "#1F3B2D", "color_acento": "#C8A04B"},
+        "calidad_recorte": "maxima", "modelo_escenas": "google/gemini-nano-banana-2.1", "tope_sesion_usd": 2.0,
+    }
+
+    # Al recargar la página, todo sigue ahí (y la clave sigue enmascarada).
+    pagina.reload()
+    expect(pagina.locator("#zona-ajustes")).to_be_visible()  # recuerda la zona
+    expect(pagina.locator("#mascara-clave")).to_have_text("••••" + clave[-4:])
+    expect(pagina.locator("#negocio-nombre")).to_have_value("Café 2600")
+    expect(pagina.locator("#tope-sesion")).to_have_value("2")
+    expect(pagina.locator("input[name='calidad'][value='maxima']")).to_be_checked()
+    assert clave not in pagina.content()
+    expect(pagina.locator("footer.firma")).to_be_visible()
+
+    # Las fotos y sus resultados siguen en la sesión.
+    pagina.click(".zona-boton[data-zona='fotos']")
+    expect(pagina.locator("#lista-fotos .foto")).to_have_count(5)

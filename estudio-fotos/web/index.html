@@ -130,9 +130,99 @@
 
       <!-- Zona Ajustes ----------------------------------------------------------------------------------------- -->
       <section class="zona" id="zona-ajustes" aria-labelledby="titulo-ajustes" hidden>
+        <h2 class="solo-lectores" id="titulo-ajustes">Ajustes</h2>
+
         <div class="tarjeta">
-          <h2 id="titulo-ajustes">Ajustes</h2>
+          <h2>Clave de OpenRouter</h2>
+          <p class="ayuda">
+            Solo hace falta para las escenas con IA: el recorte, el fondo blanco y las medidas funcionan sin ella. Se guarda
+            en este computador y aquí nunca se muestra entera. Ponle un tope de gasto a la clave en openrouter.ai.
+          </p>
+          <div class="nota fila-entre" id="clave-guardada" hidden>
+            <span>Clave guardada: <strong id="mascara-clave"></strong></span>
+            <span class="fila">
+              <button type="button" class="boton" id="probar-clave">Probar</button>
+              <button type="button" class="boton boton-enlace" id="borrar-clave">Borrar la clave</button>
+            </span>
+          </div>
+          <p class="nota" id="resultado-clave" hidden></p>
+          <div class="fila-campos">
+            <label class="campo campo-ancho">
+              <span id="etiqueta-clave">Pega aquí tu clave</span>
+              <input type="password" id="clave" autocomplete="off" spellcheck="false" placeholder="sk-or-…" />
+            </label>
+            <button type="button" class="boton boton-principal" id="guardar-clave">Guardar clave</button>
+          </div>
         </div>
+
+        <div class="tarjeta">
+          <h2>Marca del negocio</h2>
+          <p class="ayuda">La página usa estos colores. A las fotos nunca se les añade el logo ni el nombre.</p>
+          <div class="fila-campos">
+            <label class="campo campo-ancho">
+              <span>Nombre del negocio</span>
+              <input type="text" id="negocio-nombre" maxlength="60" autocomplete="off" />
+            </label>
+            <label class="campo">
+              <span>Color principal</span>
+              <input type="color" id="negocio-color-principal" />
+            </label>
+            <label class="campo">
+              <span>Color de acento</span>
+              <input type="color" id="negocio-color-acento" />
+            </label>
+          </div>
+          <div class="fila">
+            <img id="vista-logo" class="vista-logo" alt="Logo del negocio" hidden />
+            <label class="boton" for="elegir-logo" id="boton-logo">Elegir un logo (opcional)</label>
+            <input class="solo-lectores" type="file" id="elegir-logo" accept="image/jpeg,image/png,image/webp" />
+            <button type="button" class="boton boton-enlace" id="quitar-logo" hidden>Quitar el logo</button>
+          </div>
+          <p class="nota nota-error" id="error-logo" hidden></p>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Calidad del recorte</h2>
+          <div class="opciones" id="calidades" role="radiogroup" aria-label="Calidad del recorte">
+            <label class="opcion">
+              <input type="radio" name="calidad" value="automatica" />
+              <span><strong>Automática (recomendada)</strong><br /><span class="ayuda">Elige el modelo según tu computador.</span></span>
+            </label>
+            <label class="opcion">
+              <input type="radio" name="calidad" value="maxima" />
+              <span><strong>Máxima</strong><br /><span class="ayuda">El modelo completo (unos 973 MB): el mejor recorte, más lento sin aceleración.</span></span>
+            </label>
+            <label class="opcion">
+              <input type="radio" name="calidad" value="rapida" />
+              <span><strong>Rápida</strong><br /><span class="ayuda">El modelo ligero (unos 224 MB): más rápido, con bordes algo menos finos.</span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Escenas con IA</h2>
+          <div class="fila-campos">
+            <label class="campo campo-ancho">
+              <span>Modelo</span>
+              <select id="modelo-escenas"></select>
+            </label>
+            <label class="campo">
+              <span>Tope de gasto por sesión (dólares)</span>
+              <input type="number" id="tope-sesion" min="0" max="1000" step="0.5" inputmode="decimal" />
+            </label>
+          </div>
+          <p class="ayuda" id="gasto-sesion"></p>
+          <p class="ayuda">
+            El costo es el de partida de cada modelo y se corrige con lo que cuestan de verdad tus escenas. Si una
+            estimación supera lo que queda del tope, no se gasta.
+          </p>
+        </div>
+
+        <div class="fila">
+          <button type="button" class="boton boton-principal" id="guardar-ajustes">Guardar ajustes</button>
+          <span class="nota nota-bien" id="ajustes-guardados" hidden>Ajustes guardados.</span>
+        </div>
+        <p class="nota nota-error" id="error-ajustes" hidden></p>
       </section>
     </main>
 
