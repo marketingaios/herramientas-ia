@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import queue
+import random
 import socket
 import subprocess
 import sys
@@ -20,15 +21,16 @@ from estudio import __main__ as arranque
 
 
 def _puerto_libre() -> int:
-    """Un puerto libre cualquiera, con el siguiente también libre (para probar «usamos el N»)."""
-    for _ in range(50):
-        with socket.socket() as uno:
-            uno.bind(("127.0.0.1", 0))
-            puerto = uno.getsockname()[1]
-        if puerto > 60000:
-            continue
+    """Un puerto libre cualquiera, con el siguiente también libre (para probar «usamos el N»).
+
+    Lo elige la prueba, al azar entre 20000 y 60000: los que reparte el sistema pueden caer todos por encima de 60000,
+    y la herramienta solo acepta `ESTUDIO_PUERTO` hasta 65000.
+    """
+    for _ in range(200):
+        puerto = random.randrange(20000, 60000)
         try:
-            with socket.socket() as dos:
+            with socket.socket() as uno, socket.socket() as dos:
+                uno.bind(("127.0.0.1", puerto))
                 dos.bind(("127.0.0.1", puerto + 1))
             return puerto
         except OSError:
