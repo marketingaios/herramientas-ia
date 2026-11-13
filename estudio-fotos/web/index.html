@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Estudio de fotos de producto</title>
+    <link rel="icon" href="/marca/ismagit_negro.png" />
+    <link rel="stylesheet" href="/estilo/estilo.css" />
+    <link rel="stylesheet" href="/web/app.css" />
+    <script src="/web/app.js" defer></script>
+  </head>
+  <body>
+    <header class="cabecera">
+      <div class="cabecera-dentro">
+        <div class="cabecera-marca">
+          <img id="logo-negocio" class="cabecera-logo" alt="" hidden />
+          <div>
+            <p class="cabecera-negocio" id="nombre-negocio" hidden></p>
+            <h1>Estudio de fotos de producto</h1>
+          </div>
+        </div>
+        <nav class="zonas" aria-label="Zonas de la página">
+          <button type="button" class="zona-boton" data-zona="fotos" aria-current="page">Fotos</button>
+          <button type="button" class="zona-boton" data-zona="resultados">Resultados</button>
+          <button type="button" class="zona-boton" data-zona="ajustes">Ajustes</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="contenido">
+      <p class="nota nota-aviso" id="aviso-puerto" hidden></p>
+      <p class="nota nota-error" id="sin-respuesta" hidden>
+        La herramienta no responde. Comprueba que sigue abierta en este computador y recarga la página.
+      </p>
+
+      <!-- Zona Fotos ------------------------------------------------------------------------------------------- -->
+      <section class="zona" id="zona-fotos" aria-labelledby="titulo-fotos">
+        <div class="tarjeta">
+          <div class="fila-entre">
+            <h2 id="titulo-fotos">1 · Sube tus fotos</h2>
+            <span class="chip" id="chip-modelo" hidden></span>
+          </div>
+          <p class="ayuda" id="nota-modelo" hidden></p>
+
+          <label class="soltar" id="soltar" for="elegir-fotos">
+            <strong>Arrastra aquí tus fotos</strong>
+            <span>o haz clic para elegirlas · JPG, PNG o WEBP · hasta 20 a la vez, de 25 MB cada una</span>
+            <input class="solo-lectores" type="file" id="elegir-fotos" accept="image/jpeg,image/png,image/webp" multiple />
+          </label>
+
+          <p class="nota" id="subiendo" hidden></p>
+          <ul class="lista-notas" id="avisos-subida" hidden></ul>
+
+          <div class="nota" id="estado-modelo" hidden>
+            <p id="texto-modelo"></p>
+            <div class="barra" id="barra-modelo-caja" hidden><div id="barra-modelo"></div></div>
+            <button type="button" class="boton" id="reintentar-modelo" hidden>Volver a intentarlo</button>
+          </div>
+
+          <div class="avance" id="avance-recorte" hidden>
+            <div class="barra" role="progressbar" aria-label="Avance del recorte" aria-valuemin="0" aria-valuemax="100" id="barra-recorte-caja">
+              <div id="barra-recorte"></div>
+            </div>
+            <p class="avance-texto" id="texto-recorte"></p>
+          </div>
+        </div>
+
+        <div class="tarjeta" id="tarjeta-fotos" hidden>
+          <div class="fila-entre">
+            <h2>2 · Recortes, antes y después</h2>
+            <button type="button" class="boton boton-enlace" id="empezar-de-nuevo">Empezar de nuevo</button>
+          </div>
+          <p class="ayuda">
+            Mueve la línea de cada foto para comparar el antes y el después. El fondo de cuadros es la parte transparente
+            del recorte.
+          </p>
+          <ul class="fotos" id="lista-fotos"></ul>
+        </div>
+      </section>
+
+      <!-- Zona Resultados -------------------------------------------------------------------------------------- -->
+      <section class="zona" id="zona-resultados" aria-labelledby="titulo-resultados" hidden>
+        <div class="tarjeta">
+          <h2 id="titulo-resultados">Resultados</h2>
+          <p class="ayuda" id="sin-resultados">
+            Todavía no hay resultados. Sube tus fotos en «Fotos» y aquí verás cada recorte.
+          </p>
+        </div>
+      </section>
+
+      <!-- Zona Ajustes ----------------------------------------------------------------------------------------- -->
+      <section class="zona" id="zona-ajustes" aria-labelledby="titulo-ajustes" hidden>
+        <div class="tarjeta">
+          <h2 id="titulo-ajustes">Ajustes</h2>
+        </div>
+      </section>
+    </main>
+
+    <footer class="firma">
+      <a href="https://marketingaios.com/?origen=herramienta-estudio-fotos" target="_blank" rel="noopener">
+        <img src="/marca/ismagit_negro.png" alt="Ismagit" height="18" />
+        <span>Hecho con la guía de Ismagit</span>
+      </a>
+    </footer>
+  </body>
+</html>

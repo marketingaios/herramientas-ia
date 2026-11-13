@@ -61,7 +61,7 @@ commit.
       `NO_ABRIR_NAVEGADOR=1`.
       Prueba: `test_arranque.py` (elige el siguiente puerto libre y lo dice; el proceso responde y escribe la
       dirección; no escucha en otras interfaces; con `NO_ABRIR_NAVEGADOR=1` no abre el navegador).
-- [ ] **Paso 14 · Página · Fotos**: subir y arrastrar, errores por archivo, avisos «Calidad máxima» y «Modo rápido…»,
+- [x] **Paso 14 · Página · Fotos**: subir y arrastrar, errores por archivo, avisos «Calidad máxima» y «Modo rápido…»,
       descarga del modelo, barra de avance, deslizador antes/después sobre fondo de cuadros, firma en el pie.
       Prueba: `test_pagina.py` (nada de internet salvo el enlace de la firma) y recorrido 1 de `test_e2e.py`.
 - [ ] **Paso 15 · Página · Medidas y Resultados**: selector de plataformas, generar, cuadrícula por foto, avisos por
