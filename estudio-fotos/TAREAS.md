@@ -169,5 +169,5 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
 - [x] **Paso 33 · Revisión corta**: el Revisor comprueba los puntos de seguridad que tocan estos cambios (el 9, la
       página no carga nada de internet, tampoco las fuentes; y el 8, el 5, el 3, el 2 y el 6) y que las pruebas pasan
       todas; escribe su parte en `REVISION.md`; se corrige lo que encuentre y lo vuelve a comprobar.
-- [ ] **Paso 34 · Demo y entrega**: arrancar la herramienta, dar la dirección, el resumen final y la línea
+- [x] **Paso 34 · Demo y entrega**: arrancar la herramienta, dar la dirección, el resumen final y la línea
       `TERMINADO: estudio-fotos 1.1`.
