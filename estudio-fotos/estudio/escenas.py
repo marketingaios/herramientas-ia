@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,10 +37,10 @@ ESCENAS = [
         "desenfocada al fondo",
     },
     {
-        "id": "colores-marca",
-        "nombre": "Fondo liso con los colores de tu marca",
-        "pide": "el producto sobre un fondo liso y limpio con los colores de la marca: el color principal es "
-        "{color_principal} y el color de acento es {color_acento}; sin otros objetos alrededor",
+        "id": "fondo-liso",
+        "nombre": "Fondo liso de un color",
+        "pide": "el producto sobre un fondo liso, limpio y uniforme de un solo color: el color {color} (código "
+        "hexadecimal); sin otros objetos alrededor",
     },
     {
         "id": "exterior",
@@ -55,6 +56,9 @@ ESCENAS = [
 ]
 PROPIA = "propia"  # la escena que escribe el usuario
 PROPIA_MINIMO, PROPIA_MAXIMO = 3, 300
+FONDO_LISO = "fondo-liso"  # la única escena que lleva un color: el que se elige en la página
+COLOR_POR_DEFECTO = "#D9D9D9"  # gris claro
+_COLOR = re.compile(r"#[0-9A-Fa-f]{6}")
 
 # El texto fijo de la petición (ficha, punto 4.4). Está en español, como todo: el usuario puede leer lo que se envía.
 TEXTO_FIJO = (
@@ -66,11 +70,12 @@ TEXTO_FIJO = (
 
 MARCA_IPTC = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"
 MARCA_PAGINA = "Para redes y fotos secundarias"
-NOTA_PAGINA = "Mercado Libre, Amazon y Google piden fondo blanco en la foto principal."
+NOTA_PAGINA = "Mercado Libre y Amazon piden fondo blanco en la foto principal."
 
 MENSAJE_ESCENA = "Elige una de las escenas de la lista o escribe la tuya."
 MENSAJE_FORMATO = "El formato debe ser 1:1, 4:5 o 16:9."
 MENSAJE_PROPIA = f"Describe tu escena con entre {PROPIA_MINIMO} y {PROPIA_MAXIMO} caracteres."
+MENSAJE_COLOR = f"El color debe tener la forma #RRGGBB, por ejemplo {COLOR_POR_DEFECTO}."
 
 # La imagen de referencia que se envía al modelo: el producto sobre blanco, 1024×1024, al 85 %.
 _REFERENCIA = Plataforma(id="referencia", nombre="Referencia", ancho=1024, alto=1024, porcentaje=85)
@@ -110,19 +115,36 @@ def escenas_publicas() -> list[dict]:
     return [{"id": escena["id"], "nombre": escena["nombre"]} for escena in ESCENAS]
 
 
-def preparar_pedido(escena: object, formato: object, propia: object, negocio: dict) -> Pedido:
-    """Comprueba la escena y el formato elegidos y escribe el texto de la petición."""
+def validar_color(valor: object) -> str:
+    """El color del fondo liso, ya comprobado: solo vale un texto con la forma exacta `#RRGGBB`.
+
+    Si no llega ninguno, gris claro. Es lo único que el navegador elige y acaba en el texto de la petición: por eso
+    no pasa nada que no sea exactamente un color.
+    """
+    if valor is None:
+        return COLOR_POR_DEFECTO
+    if not isinstance(valor, str) or not _COLOR.fullmatch(valor):
+        raise ErrorEscena(MENSAJE_COLOR)
+    return valor.upper()
+
+
+def preparar_pedido(escena: object, formato: object, propia: object, color: object = None) -> Pedido:
+    """Comprueba la escena, el formato y el color elegidos y escribe el texto de la petición.
+
+    El color se comprueba siempre, con cualquier escena, pero solo se usa en «Fondo liso de un color».
+    """
     if not isinstance(formato, str) or formato not in FORMATOS:
         raise ErrorEscena(MENSAJE_FORMATO)
+    color = validar_color(color)
     if escena == PROPIA:
         descripcion = _limpiar_propia(propia)
         return Pedido(PROPIA, descripcion, formato, f"{TEXTO_FIJO} La escena: {descripcion}")
     for preparada in ESCENAS:
         if preparada["id"] == escena:
-            pide = preparada["pide"].format(
-                color_principal=negocio["color_principal"], color_acento=negocio["color_acento"]
-            )
-            return Pedido(preparada["id"], preparada["nombre"], formato, f"{TEXTO_FIJO} La escena: {pide}.")
+            nombre, pide = preparada["nombre"], preparada["pide"]
+            if preparada["id"] == FONDO_LISO:
+                nombre, pide = f"{nombre} ({color})", pide.format(color=color)
+            return Pedido(preparada["id"], nombre, formato, f"{TEXTO_FIJO} La escena: {pide}.")
     raise ErrorEscena(MENSAJE_ESCENA)
 
 

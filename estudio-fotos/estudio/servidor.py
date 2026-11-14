@@ -383,7 +383,7 @@ def crear_aplicacion(config: Config, estudio: Estudio | None = None) -> FastAPI:
         cuerpo = await _leer_json(peticion)
         return await run_in_threadpool(
             estudio.estimar_escenas, _lista(cuerpo.get("fotos")), cuerpo.get("escena"), cuerpo.get("formato"),
-            cuerpo.get("propia"),
+            cuerpo.get("propia"), cuerpo.get("color"),
         )
 
     @app.post("/api/escenas")
@@ -393,7 +393,7 @@ def crear_aplicacion(config: Config, estudio: Estudio | None = None) -> FastAPI:
 
         def generar() -> dict:
             return estudio.generar_escenas(
-                fotos, cuerpo.get("escena"), cuerpo.get("formato"), cuerpo.get("propia"),
+                fotos, cuerpo.get("escena"), cuerpo.get("formato"), cuerpo.get("propia"), cuerpo.get("color"),
                 confirmado=cuerpo.get("confirmado"), costo_visto=cuerpo.get("costo_estimado_usd"),
             )
 

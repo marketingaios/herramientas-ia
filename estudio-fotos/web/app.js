@@ -475,6 +475,7 @@
       escena,
       formato: $("formato-escena").value,
       propia: escena === opciones.escena_propia.id ? $("escena-propia").value : null,
+      color: escena === opciones.escena_color.id ? $("color-escena").value : null, // solo el fondo liso lleva color
     };
   }
 
@@ -501,6 +502,7 @@
       return opcion;
     }));
     $("escena-propia").maxLength = opciones.escena_propia.maximo;
+    $("color-escena").value = opciones.escena_color.por_defecto.toLowerCase(); // gris claro, si no se elige otro
     $("marca-escenas").textContent = opciones.marca_escenas;
     $("nota-escenas").textContent = opciones.nota_escenas;
     pintarResumenEscenas();
@@ -512,6 +514,8 @@
     const trabajando = estado.trabajos.escenas.estado === "trabajando";
     const modelo = opciones.modelos_escenas.find((m) => m.id === estado.ajustes.modelo_escenas);
     mostrar($("campo-escena-propia"), $("escena").value === opciones.escena_propia.id);
+    mostrar($("campo-color-escena"), $("escena").value === opciones.escena_color.id);
+    $("texto-color-escena").textContent = $("color-escena").value.toUpperCase();
     $("ver-costo").disabled = trabajando || !fotos;
     $("generar-escenas").disabled = trabajando;
     let resumen = "Marca al menos una foto ya recortada.";
@@ -523,7 +527,7 @@
   }
   alCambiarSeleccion.push(olvidarEstimacion);
 
-  for (const campo of ["escena", "formato-escena", "escena-propia"]) {
+  for (const campo of ["escena", "formato-escena", "escena-propia", "color-escena"]) {
     $(campo).addEventListener("input", olvidarEstimacion);
   }
 

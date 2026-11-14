@@ -90,6 +90,13 @@ def test_la_clave_no_aparece_en_ningun_sitio(servidor, simulador, clave_falsa, r
     assert pedir("PUT", "/api/ajustes", json={"modelo_escenas": clave_falsa}).status_code == 400
     assert pedir("POST", "/api/medidas", json={"fotos": clave_falsa, "plataformas": [clave_falsa]}).status_code == 422
     assert pedir("POST", "/api/escenas/estimar", json={"fotos": ids, "escena": clave_falsa, "formato": clave_falsa}).status_code == 400
+    # La clave donde va el color del fondo liso, en las dos rutas de escenas: se rechaza y no viaja a ningún sitio.
+    con_color = {"fotos": ids, "escena": "fondo-liso", "formato": "1:1", "color": clave_falsa}
+    antes = len(simulador.peticiones)
+    assert pedir("POST", "/api/escenas/estimar", json=con_color).status_code == 400
+    assert pedir("POST", "/api/escenas", json={**con_color, "confirmado": True, "costo_estimado_usd": 0.04}).status_code == 400
+    assert pedir("POST", "/api/escenas/estimar", json={**con_color, "escena": "cocina"}).status_code == 400
+    assert len(simulador.peticiones) == antes
     assert pedir("GET", "/api/descargar", params={"plataforma": clave_falsa}).status_code == 404
     assert pedir("GET", f"/api/archivos/{ids[0]}/{clave_falsa}").status_code == 404
     assert pedir("GET", f"/api/fotos/{clave_falsa}/vista").status_code == 404

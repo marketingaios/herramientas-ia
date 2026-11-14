@@ -109,7 +109,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       Prueba: `test_servidor.py` (todas las muestras pasan por el servidor; el aviso de menos de 1.000 px, contado con
       las propias fotos), `test_modelo_real.py` (cada recorte tiene un producto) y los recorridos de `test_e2e.py`,
       que cuentan las fotos que hay.
-- [ ] **Paso 25 · Escenas · «Fondo liso de un color»**: el id `fondo-liso`, el campo `color` (`#RRGGBB`, validado
+- [x] **Paso 25 · Escenas · «Fondo liso de un color»**: el id `fondo-liso`, el campo `color` (`#RRGGBB`, validado
       siempre; gris claro si no llega) en las dos rutas de escenas, el selector de color en la página y la nota sin
       Google.
       Prueba: `test_escenas.py` (el color va en el texto de la petición y solo en esa escena; uno que no vale se

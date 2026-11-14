@@ -702,10 +702,10 @@ class Estudio:
         except ErrorOpenRouter as error:
             raise ErrorEstudio(str(error), 409)
 
-    def _pedido_escenas(self, ids_fotos: object, escena: object, formato: object, propia: object):
+    def _pedido_escenas(self, ids_fotos: object, escena: object, formato: object, propia: object, color: object):
         """Lo que se va a pedir, ya comprobado: las fotos, el pedido y la estimación. No llama a internet."""
         try:
-            pedido = las_escenas.preparar_pedido(escena, formato, propia, self.ajustes["negocio"])
+            pedido = las_escenas.preparar_pedido(escena, formato, propia, color)
         except las_escenas.ErrorEscena as error:
             raise ErrorEstudio(str(error))
         ids = ids_fotos if isinstance(ids_fotos, list) else []
@@ -719,9 +719,11 @@ class Estudio:
             raise ErrorEstudio("Elige al menos una foto ya recortada.")
         return fotos, pedido, costos.estimar(self.config.gastos, modelo, len(fotos))
 
-    def estimar_escenas(self, ids_fotos: object, escena: object, formato: object, propia: object = None) -> dict:
+    def estimar_escenas(
+        self, ids_fotos: object, escena: object, formato: object, propia: object = None, color: object = None
+    ) -> dict:
         """El costo estimado, para mostrarlo antes de gastar. No gasta ni llama a internet."""
-        fotos, _pedido, estimacion = self._pedido_escenas(ids_fotos, escena, formato, propia)
+        fotos, _pedido, estimacion = self._pedido_escenas(ids_fotos, escena, formato, propia, color)
         mensaje = None
         if self.clave() is None:
             mensaje = MENSAJES_OPENROUTER["sin_clave"]
@@ -748,6 +750,7 @@ class Estudio:
         escena: object,
         formato: object,
         propia: object = None,
+        color: object = None,
         *,
         confirmado: object = False,
         costo_visto: object = None,
@@ -755,7 +758,7 @@ class Estudio:
         """Empieza el lote de escenas. Gasta dinero: solo con la confirmación y con el costo que vio el usuario."""
         if confirmado is not True:
             raise ErrorEstudio(MENSAJE_SIN_CONFIRMAR)
-        fotos, pedido, estimacion = self._pedido_escenas(ids_fotos, escena, formato, propia)
+        fotos, pedido, estimacion = self._pedido_escenas(ids_fotos, escena, formato, propia, color)
         visto = costo_visto if isinstance(costo_visto, (int, float)) and not isinstance(costo_visto, bool) else None
         if visto is None or abs(visto - estimacion.total) > 0.0005:
             raise ErrorEstudio(
@@ -877,6 +880,7 @@ class Estudio:
             "error_plataformas": error,
             "escenas": las_escenas.escenas_publicas(),
             "escena_propia": {"id": las_escenas.PROPIA, "maximo": las_escenas.PROPIA_MAXIMO},
+            "escena_color": {"id": las_escenas.FONDO_LISO, "por_defecto": las_escenas.COLOR_POR_DEFECTO},
             "formatos": list(las_escenas.FORMATOS),
             "marca_escenas": las_escenas.MARCA_PAGINA,
             "nota_escenas": las_escenas.NOTA_PAGINA,

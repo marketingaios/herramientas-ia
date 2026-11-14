@@ -361,11 +361,11 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
     pagina.click(".zona-boton[data-zona='fotos']")
     expect(pagina.locator("#tarjeta-escenas")).to_be_visible()
     expect(pagina.locator("#marca-escenas")).to_have_text("Para redes y fotos secundarias")
-    expect(pagina.locator("#nota-escenas")).to_have_text("Mercado Libre, Amazon y Google piden fondo blanco en la foto principal.")
+    expect(pagina.locator("#nota-escenas")).to_have_text("Mercado Libre y Amazon piden fondo blanco en la foto principal.")
     expect(pagina.locator("#escenas-sin-clave")).to_be_hidden()  # la clave se guardó en el recorrido 3
     expect(pagina.locator("#escena option")).to_have_text([
         "Mesa de madera clara con luz de mañana", "Cocina moderna, encimera de piedra",
-        "Fondo liso con los colores de tu marca", "Exterior con luz natural suave", "Estudio con sombra suave",
+        "Fondo liso de un color", "Exterior con luz natural suave", "Estudio con sombra suave",
         "Escribir la mía…",
     ])
     expect(pagina.locator("#formato-escena option")).to_have_text(["1:1", "4:5", "16:9"])
@@ -373,10 +373,23 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
     for indice in range(2, TOTAL):  # se quedan marcadas las dos primeras
         pagina.locator("#lista-fotos .foto").nth(indice).locator(".foto-usar input").uncheck()
     expect(pagina.locator("#resumen-escenas")).to_have_text("2 fotos marcadas = 2 escenas · modelo Nano Banana 2.1 (recomendado)")
+    expect(pagina.locator("#campo-color-escena")).to_be_hidden()  # con la primera escena no hay color que elegir
     pagina.select_option("#escena", "propia")
     expect(pagina.locator("#campo-escena-propia")).to_be_visible()  # el campo para escribir la tuya
+    expect(pagina.locator("#campo-color-escena")).to_be_hidden()
     pagina.select_option("#escena", "mesa-madera")
     expect(pagina.locator("#campo-escena-propia")).to_be_hidden()
+    expect(pagina.locator("#campo-color-escena")).to_be_hidden()
+
+    # El selector de color solo se ve con «Fondo liso de un color»; por defecto, gris claro.
+    pagina.select_option("#escena", "fondo-liso")
+    expect(pagina.locator("#campo-color-escena")).to_be_visible()
+    expect(pagina.locator("#campo-escena-propia")).to_be_hidden()
+    expect(pagina.locator("#color-escena")).to_have_attribute("type", "color")
+    expect(pagina.locator("#color-escena")).to_have_value("#d9d9d9")
+    expect(pagina.locator("#texto-color-escena")).to_have_text("#D9D9D9")
+    pagina.fill("#color-escena", "#3366cc")
+    expect(pagina.locator("#texto-color-escena")).to_have_text("#3366CC")
     pagina.select_option("#formato-escena", "4:5")
 
     # Antes de gastar: el costo estimado, y hay que confirmar. Todavía no se ha pedido ni anotado nada.
@@ -393,6 +406,12 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
     pagina.select_option("#formato-escena", "4:5")
     pagina.click("#ver-costo")
     expect(pagina.locator("#texto-estimacion")).to_have_text("2 escenas · costo estimado 0,08 $ · ¿Generar?")
+    pagina.fill("#color-escena", "#112233")  # también si cambia el color
+    expect(pagina.locator("#confirmar-escenas")).to_be_hidden()
+    pagina.fill("#color-escena", "#3366cc")
+    pagina.click("#ver-costo")
+    expect(pagina.locator("#texto-estimacion")).to_have_text("2 escenas · costo estimado 0,08 $ · ¿Generar?")
+    _captura(pagina, "4-fondo-liso-color")
     assert len(simulador.peticiones) == antes
 
     # Confirma: la barra de avance y, al terminar, el costo real.
@@ -416,12 +435,15 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
     for peticion in nuevas[1:]:
         cuerpo = peticion["cuerpo"]
         assert (cuerpo["model"], cuerpo["aspect_ratio"], cuerpo["resolution"]) == ("google/gemini-nano-banana-2.1", "4:5", "1K")
-        assert "mesa de madera clara" in cuerpo["prompt"] and "Usa exactamente ese producto" in cuerpo["prompt"]
+        assert "Usa exactamente ese producto" in cuerpo["prompt"]
+        assert "fondo liso" in cuerpo["prompt"] and "el color #3366CC" in cuerpo["prompt"]  # el color elegido
+        assert "#112233" not in cuerpo["prompt"]
 
     # Cada gasto quedó anotado (en la carpeta temporal), sin la clave.
     texto_gastos = gastos.read_text(encoding="utf-8")
     lineas = [json.loads(linea) for linea in texto_gastos.splitlines()]
     assert len(lineas) == 2 and entorno.clave not in texto_gastos and "sk-or-" not in texto_gastos
+    assert "#3366cc" not in texto_gastos.lower()  # el color solo va en el texto de la petición
     for linea in lineas:
         assert set(linea) == {"ts", "modelo", "imagenes", "costo_estimado_usd", "costo_usd"}
         assert (linea["modelo"], linea["imagenes"], linea["costo_estimado_usd"], linea["costo_usd"]) == (
@@ -440,11 +462,11 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
         if indice >= 2:
             assert titulos == ["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)"]
             continue
-        assert titulos == ["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)", "Escena: Mesa de madera clara con luz de mañana"]
+        assert titulos == ["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)", "Escena: Fondo liso de un color (#3366CC)"]
         escena = bloque.locator(".resultado").last
         expect(escena.locator(".chip")).to_have_text("Para redes y fotos secundarias")
         archivo = escena.locator(".resultado-archivo").inner_text()
-        medida = re.fullmatch(rf"{foto}_escena_mesa-madera_(\d+)x(\d+)\.jpg", archivo)
+        medida = re.fullmatch(rf"{foto}_escena_fondo-liso_(\d+)x(\d+)\.jpg", archivo)
         assert medida, archivo
         ancho, alto = int(medida[1]), int(medida[2])
         assert ancho * 5 == alto * 4 or abs(ancho / alto - 4 / 5) < 0.002, archivo  # el formato pedido: 4:5
@@ -511,3 +533,4 @@ def test_5_la_pagina_no_cargo_nada_de_internet_ni_dio_errores(pagina, entorno):
     salida = entorno.proceso.salida()
     assert "Estudio de fotos abierto en " in salida
     assert entorno.clave not in salida and str(Path.home()) not in salida and "Traceback" not in salida
+    assert "#3366cc" not in salida.lower()  # el color del fondo liso tampoco se registra

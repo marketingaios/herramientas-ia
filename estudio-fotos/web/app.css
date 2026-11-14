@@ -544,6 +544,12 @@ textarea {
   flex: 1 1 260px;
 }
 
+.campo-color > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 input[type="color"] {
   width: 96px;
   height: 38px;
