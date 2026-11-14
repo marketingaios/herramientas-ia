@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import tomllib
@@ -177,13 +178,103 @@ def test_los_mensajes_del_readme_son_los_de_la_herramienta():
     assert "973 MB" in mensaje_descarga("birefnet-general") and "973 MB" in texto and "224 MB" in texto
 
 
-def test_cambios_md_cuenta_la_version_1():
+def test_cambios_md_cuenta_las_versiones_1_y_1_1():
     texto = _texto(CARPETA / "CAMBIOS.md")
-    proyecto = tomllib.loads(_texto(CARPETA / "pyproject.toml"))
-    assert texto.startswith("# Cambios") and "## Versión 1" in texto
-    assert proyecto["project"]["version"].startswith("1.")
+    assert texto.startswith("# Cambios")
+    titulos = re.findall(r"^## (Versión [\d.]+) · \d+ de \w+ de \d{4}$", texto, re.M)
+    assert titulos == ["Versión 1.1", "Versión 1"]  # la última, arriba
+    la_1_1, la_1 = texto.split("## Versión 1 · ")[0], texto.split("## Versión 1 · ")[1]
+    # La 1.1 cuenta los seis cambios del punto 13 de la ficha.
+    for parte in ("Diseño de Ismagit", "Sin marca del negocio", "«Fondo liso de un color»", "Muestras", "Para Mac y Windows",
+                  "`estilo/fuentes/`", "Si vienes de la versión 1", "`logo_negocio.png`", "Para la versión siguiente"):
+        assert parte in la_1_1, parte
+    # La entrada de la versión 1 sigue como estaba.
+    for parte in ("La primera versión, hecha con la ficha 1", "**Qué trae**", "**Lo que esta versión no hace**", "**Para la versión siguiente**"):
+        assert parte in la_1, parte
+    # Lo que quedó pendiente en la versión 1 sigue anotado en la 1.1.
+    pendientes = [linea for linea in la_1.split("**Para la versión siguiente**")[1].splitlines() if linea.startswith("- ")]
+    assert len(pendientes) == 3 and all(pendiente in la_1_1 for pendiente in pendientes)
+
+
+def test_la_version_es_la_1_1_en_todos_los_sitios():
+    from estudio import VERSION
+
+    assert VERSION == "1.1"
+    assert tomllib.loads(_texto(CARPETA / "pyproject.toml"))["project"]["version"] == "1.1.0"
+    assert 'name = "estudio-fotos"\nversion = "1.1.0"' in _texto(CARPETA / "uv.lock")
     fila = next(linea for linea in _texto(RAIZ / "AGENTS.md").splitlines() if linea.startswith("| Estudio de fotos"))
-    assert "| 1 |" in fila
+    assert "| 1.1 |" in fila and "| 1 |" not in fila
+    inicio = " ".join(_texto(RAIZ / "inicio" / "index.html").split())
+    assert "Versión 1.1 · Para abrirla:" in inicio and "Versión 1 ·" not in inicio
+    assert _texto(CARPETA / "README.md").splitlines()[2].startswith("Versión 1.1 · ")
+    assert _texto(CARPETA / "FICHA.md").splitlines()[2] == "**Construyamos con IA · ficha 1 · versión 1.1 · noviembre de 2026 · guía de Ismagit**"
+
+
+def test_el_readme_es_el_de_la_version_1_1():
+    texto = _texto(CARPETA / "README.md")
+    junto = " ".join(texto.split())
+    assert "Para Mac y Windows." in texto.splitlines()[2]
+    assert "aún sin probar" not in texto and "se probó en Mac" not in texto
+    # Para qué productos sirve, con sus dos avisos.
+    assert texto.index("## Para qué productos sirve") < texto.index("## Cómo se abre")
+    seccion = " ".join(texto.split("## Para qué productos sirve")[1].split("## ")[0].split())
+    for parte in ("Para fotos de **objetos**", "No es para fotos de personas ni de modelos con la ropa puesta",
+                  "los objetos **transparentes** (vidrio, plástico claro) y los bordes muy finos: revisa el recorte antes de publicar"):
+        assert parte in seccion, parte
+    # Las escenas: el fondo liso de un color, y la nota sin Google.
+    assert "«Fondo liso de un color»" in texto and "un selector para elegir el color" in junto
+    assert "Mercado Libre y Amazon piden fondo blanco en la foto principal." in junto
+    assert "Amazon y Google piden" not in junto and "colores de tu marca, en exterior" not in junto
+    # Ajustes, sin marca del negocio.
+    ajustes = texto.split("\n## Ajustes\n")[1].split("\n## ")[0]
+    assert re.findall(r"^- \*\*([^*]+)\*\*", ajustes, re.M) == ["Clave de OpenRouter", "Calidad del recorte", "Escenas con IA"]
+    assert "Marca del negocio" not in texto and "color de acento" not in texto
+    assert "| Tus ajustes (sin la clave) | `estudio-fotos/ajustes.json` |" in texto
+    # Y qué pasa con lo que guardó la versión 1.
+    assert "## Si vienes de la versión 1" in texto and "Tu logo original no se toca." in texto
+    assert "tampoco las fuentes" in junto
+
+
+def test_agents_md_describe_las_carpetas_comunes_de_la_ficha_1_1():
+    texto = _texto(RAIZ / "AGENTS.md")
+    comunes = texto.split("## Carpetas comunes")[1]
+    for parte in ("`estilo/`", "el diseño de Ismagit", "`fuentes/`", "`firma.html`", "`marca/`: el logo de Ismagit y las fuentes Geist",
+                  "`muestras/`: fotos de ejemplo hechas con IA.", "`modelos/`", "`inicio/index.html`"):
+        assert parte in comunes, parte
+    assert "- **Diseño**: todas las herramientas llevan el de Ismagit" in texto
+
+
+def test_no_queda_el_negocio_de_ejemplo_de_la_version_1():
+    """Ni su nombre, ni su logo, ni sus colores, en ningún archivo del proyecto: código, pruebas, páginas y documentos.
+
+    El nombre se arma aquí por partes para que esta prueba no lo lleve escrito. No se miran las carpetas de datos de
+    quien usa la herramienta (sus ajustes, sus resultados), ni nunca el archivo de la clave.
+    """
+    numero = "26" + "00"
+    nombre = re.compile(rf"caf(e|é|É|Ã©|\\u00e9)[\s_\-·]*{numero}".encode("utf-8"), re.I)
+    colores = [("#1F" + "3B2D").encode(), ("#C8" + "A04B").encode(), ("#C8" + "A26B").encode(), ("#C4" + "622D").encode()]
+    fuera = {".git", ".venv", "venv", "modelos", "trabajo", "salidas", ".pruebas-tmp", ".navegadores", "__pycache__",
+             ".pytest_cache", "node_modules"}
+    de_datos = {"ajustes.json", "gastos.jsonl", "medicion.json", "logo_negocio.png"}  # lo que escribe la herramienta al usarla
+    mirados = 0
+    for ruta in RAIZ.rglob("*"):
+        partes = ruta.relative_to(RAIZ).parts
+        if not ruta.is_file() or fuera & set(partes) or ruta.name.startswith(".env") or ruta.name in de_datos:
+            continue
+        assert not nombre.search(ruta.name.encode("utf-8")), f"el nombre del archivo {ruta.name}"
+        if ruta.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".woff2", ".zip", ".onnx"} or ruta.name == "uv.lock":
+            continue  # las fotos y las fuentes no son texto; `uv.lock` lo escribe uv (son nombres y huellas)
+        datos = ruta.read_bytes()
+        mirados += 1
+        assert not nombre.search(datos), f"{'/'.join(partes)} todavía nombra al negocio de ejemplo"
+        for color in colores:
+            assert color not in datos.upper(), f"{'/'.join(partes)} todavía lleva un color del negocio de ejemplo"
+    assert mirados > 60
+    # Tampoco quedan su logo ni sus tres fotos: en `marca/` y `muestras/` no hay nada más que lo de la guía.
+    assert sorted(p.name for p in (RAIZ / "muestras").iterdir() if not p.name.startswith(".")) == [
+        "bolsa_mesa.jpg", "bolso.jpg", "camiseta.jpg", "frasco_vidrio.jpg", "taza_logo.jpg", "zapatilla.jpg"]
+    de_marca = {p.name for p in (RAIZ / "marca").iterdir() if not p.name.startswith(".")}
+    assert {"ismagit_logo.png", "fuentes"} <= de_marca <= {"ismagit_logo.png", "fuentes", "ismagit_blanco.png", "ismagit_negro.png"}
 
 
 def test_los_documentos_estan_en_espanol_y_sin_datos_personales():

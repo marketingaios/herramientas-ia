@@ -16,6 +16,8 @@ Ismagit). Cada herramienta vive en su propia carpeta y funciona solo en este com
   muestra el costo real. Hay un tope de gasto por sesión.
 - **Para quien la usa**: todo en español, trabajos en lote con barra de avance, errores que dicen qué pasó y qué hacer.
   Sin datos personales en páginas ni registros. La firma de Ismagit va en el pie de cada página, nunca en las fotos.
+- **Diseño**: todas las herramientas llevan el de Ismagit (`estilo/estilo.css`, con las fuentes Geist de
+  `estilo/fuentes/`): no tienen marca propia ni la del negocio de quien las usa.
 - **No borres ni cambies lo que ya existe**: solo añade. Trabaja solo dentro de esta carpeta.
 
 ## Método
@@ -33,7 +35,7 @@ Se trabaja por fases: Ficha → Plan → Construcción → Pruebas → Revisión
 
 | Herramienta | Carpeta | Versión | Dirección | Cómo abrirla (Mac, Linux y Windows) |
 |---|---|---|---|---|
-| Estudio de fotos de producto | `estudio-fotos/` | 1 | http://127.0.0.1:8601 | `uv run --directory estudio-fotos python -m estudio` |
+| Estudio de fotos de producto | `estudio-fotos/` | 1.1 | http://127.0.0.1:8601 | `uv run --directory estudio-fotos python -m estudio` |
 
 El comando es el mismo en Mac, Linux y Windows, y se escribe desde esta carpeta (`herramientas-ia`). Si el puerto está
 ocupado, la herramienta usa el siguiente libre y lo dice al arrancar.
@@ -50,8 +52,8 @@ Para arrancar sin abrir el navegador (pruebas automáticas o un servidor), defin
 
 ## Carpetas comunes
 
-- `estilo/`: `estilo.css` (los colores de la marca como variables) y `firma.html` (la firma de Ismagit que cada página lleva en su pie).
-- `marca/`: los logos de Ismagit y el de Café 2600, el negocio de ejemplo.
-- `muestras/`: fotos de ejemplo de Café 2600, hechas con IA.
+- `estilo/`: `estilo.css` (el diseño de Ismagit, común a todas las herramientas), `fuentes/` (Geist y Geist Mono, con su licencia) y `firma.html` (la firma de Ismagit que cada página lleva en su pie).
+- `marca/`: el logo de Ismagit y las fuentes Geist (`fuentes/`).
+- `muestras/`: fotos de ejemplo hechas con IA.
 - `modelos/`: los modelos descargados, compartidos por todas las herramientas (fuera de git).
 - `inicio/index.html`: la página de inicio, con la lista de herramientas.

@@ -1,6 +1,6 @@
 [project]
 name = "estudio-fotos"
-version = "1.0.0"
+version = "1.1.0"
 description = "Estudio de fotos de producto: recorte, fondo blanco, medidas de cada tienda y escenas con IA, en tu computador."
 readme = "README.md"
 requires-python = ">=3.12,<3.14"

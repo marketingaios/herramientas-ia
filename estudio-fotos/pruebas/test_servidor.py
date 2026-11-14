@@ -48,7 +48,7 @@ def test_el_estado_y_las_opciones(servidor):
     respuesta = servidor.cliente.get("/api/estado")
     assert respuesta.status_code == 200
     estado = respuesta.json()
-    assert (estado["herramienta"], estado["version"], estado["fotos"]) == ("estudio-fotos", "1", [])
+    assert (estado["herramienta"], estado["version"], estado["fotos"]) == ("estudio-fotos", "1.1", [])
     assert estado["clave"] == {"guardada": False, "mascara": None}
     assert estado["gasto"]["tope"] == "1,00 $"
 

@@ -152,7 +152,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       colores, radios y fuentes ya calculados por el navegador; Geist y Geist Mono cargadas desde este computador; un
       solo principal por zona con los resultados pintados; foco; los estados y los mensajes (vacío, error, aviso,
       listo, confirmación y tope); y 360 px sin desplazamiento horizontal.
-- [ ] **Paso 31 · Documentos y versión**: `README.md` (para Mac y Windows, sin «aún sin probar»; para qué productos
+- [x] **Paso 31 · Documentos y versión**: `README.md` (para Mac y Windows, sin «aún sin probar»; para qué productos
       sirve; Ajustes y escenas sin marca; la nota sin Google), `CAMBIOS.md` con la 1.1 (y los pendientes de la 1),
       `AGENTS.md` (la 1.1 y «Carpetas comunes» como el punto 3 de la ficha) e `inicio/index.html` con la 1.1, la
       versión en la herramienta, y ningún documento, prueba ni archivo de código con el negocio de ejemplo de la

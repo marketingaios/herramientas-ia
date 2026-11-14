@@ -1,9 +1,19 @@
 # Estudio de fotos de producto
 
-Versión 1 · hecha con la ficha 1 de «Construyamos con IA» (guía de Ismagit).
+Versión 1.1 · hecha con la ficha 1 (versión 1.1) de «Construyamos con IA» (guía de Ismagit). Para Mac y Windows.
 
 Convierte las fotos de tus productos en fotos listas para vender: sin fondo, con fondo blanco puro, en las medidas de
 cada tienda online y, si quieres, en escenas hechas con IA. Funciona solo en este computador.
+
+## Para qué productos sirve
+
+Para fotos de **objetos**: ropa, calzado, bolsos, cosmética, alimentos envasados, tazas, artesanía, electrónica,
+juguetes. Sirve a cualquiera que venda en línea o publique sus productos: una tienda online, un catálogo de WhatsApp, un
+perfil de Instagram, un marketplace.
+
+- No es para fotos de personas ni de modelos con la ropa puesta: el recorte busca un objeto.
+- Lo más difícil son los objetos **transparentes** (vidrio, plástico claro) y los bordes muy finos: revisa el recorte
+  antes de publicar.
 
 ## Cómo se abre
 
@@ -66,8 +76,10 @@ máximo, lo que pide y de dónde se leyó (el 13 de noviembre de 2026). Si una p
 
 ### 4 · Escenas con IA (opcional)
 
-Coloca tu producto en una escena: sobre una mesa de madera, en una cocina, con los colores de tu marca, en exterior, en
-un estudio, o en la que tú describas. Eliges las fotos, la escena y el formato (1:1, 4:5 o 16:9).
+Coloca tu producto en una escena: sobre una mesa de madera, en una cocina, sobre un fondo liso del color que elijas, en
+exterior, en un estudio, o en la que tú describas. Eliges las fotos, la escena y el formato (1:1, 4:5 o 16:9).
+
+- Con «Fondo liso de un color» aparece un selector para elegir el color (gris claro si no lo cambias).
 
 - Necesita una clave de OpenRouter (en Ajustes) y cuesta dinero: unos 4 centavos de dólar por imagen con el modelo
   recomendado.
@@ -75,7 +87,7 @@ un estudio, o en la que tú describas. Eliges las fotos, la escena y el formato 
   «5 escenas · costo estimado 0,20 $ · ¿Generar?». Solo se gasta si confirmas. Al terminar ves el costo real.
 - Si el costo supera lo que queda del tope de la sesión, o lo que queda en tu clave, no se gasta y la página lo dice.
 - Cada gasto queda anotado en `gastos.jsonl` (fecha, modelo, costo estimado y costo real; nunca la clave).
-- Las escenas se marcan «Para redes y fotos secundarias»: Mercado Libre, Amazon y Google piden fondo blanco en la foto
+- Las escenas se marcan «Para redes y fotos secundarias»: Mercado Libre y Amazon piden fondo blanco en la foto
   principal.
 - Cada escena lleva en sus metadatos la marca de «imagen hecha con IA» (IPTC). Google Merchant Center la exige: no la
   quites.
@@ -84,21 +96,22 @@ un estudio, o en la que tú describas. Eliges las fotos, la escena y el formato 
 
 ### Resultados
 
-Una cuadrícula por foto: el recorte (PNG con transparencia), las medidas y las escenas. Puedes descargar todo en un
-ZIP, o una sola plataforma. Cada ZIP trae un `resumen.csv` con el archivo, la plataforma, la medida, el peso, el
-porcentaje que ocupa el producto y los avisos.
+Una cuadrícula por foto: el recorte (PNG con transparencia), las medidas y las escenas. Cada foto se ve sobre su fondo
+real: el recorte sobre cuadros claros (lo transparente) y las fotos con fondo blanco sobre blanco. Puedes descargar
+todo en un ZIP, o una sola plataforma. Cada ZIP trae un `resumen.csv` con el archivo, la plataforma, la medida, el peso,
+el porcentaje que ocupa el producto y los avisos.
 
 Si tu Excel separa las columnas con punto y coma y ves todo en una sola columna, abre el archivo con
 «Datos › Desde texto» y elige la coma.
 
 ## Ajustes
 
+Ajustes tiene tres cosas: la clave, la calidad del recorte y las escenas.
+
 - **Clave de OpenRouter**: pégala y pulsa «Guardar clave». Después solo se ve «••••» y sus 4 últimos caracteres. El
   botón **Probar** comprueba la conexión sin gastar: «Conexión correcta · límite 2,00 $ · usado 0,12 $». La clave se
   guarda en el archivo `.env` de `herramientas-ia`, solo en este computador. Ponle un tope de gasto a la clave en
   openrouter.ai.
-- **Marca del negocio**: nombre, color principal, color de acento y logo (opcional). La página usa esos colores; a las
-  fotos nunca se les añade el logo.
 - **Calidad del recorte**: Automática (recomendada), Máxima (el modelo completo) o Rápida (el modelo ligero). En un Mac
   con chip Apple o en un PC con tarjeta NVIDIA, Automática usa el modelo completo; en los demás, el ligero, y la página
   lo dice. Después del primer lote, la herramienta mide una sola vez si la aceleración de tu computador es más rápida
@@ -106,13 +119,16 @@ Si tu Excel separa las columnas con punto y coma y ves todo en una sola columna,
 - **Escenas con IA**: el modelo y el tope de gasto por sesión (1 $ si no lo cambias). La sesión dura desde que abres la
   herramienta hasta que la cierras.
 
+La página lleva siempre el diseño de Ismagit, con su logo arriba a la izquierda: la herramienta no tiene una marca
+propia ni la de tu negocio, y a las fotos nunca se les añade nada.
+
 ## Dónde queda cada cosa
 
 | Qué | Dónde |
 |---|---|
 | Tus resultados | `estudio-fotos/salidas/<fecha_hora>/`: `recortes/`, una carpeta por plataforma y `escenas/` |
 | Los gastos en escenas | `estudio-fotos/gastos.jsonl` |
-| Tus ajustes (sin la clave) | `estudio-fotos/ajustes.json` y `estudio-fotos/logo_negocio.png` |
+| Tus ajustes (sin la clave) | `estudio-fotos/ajustes.json` |
 | La clave | el archivo `.env` de `herramientas-ia` |
 | Las medidas de cada plataforma | `estudio-fotos/plataformas.json` (lo puedes editar) |
 | Lo medido de la aceleración | `estudio-fotos/medicion.json` (bórralo para volver a medir) |
@@ -143,7 +159,8 @@ la primera (sus fotos dejarían de verse) y lleva su propia cuenta del tope de g
 
 ## Privacidad
 
-- La herramienta solo escucha en este computador (`127.0.0.1`) y la página no carga nada de internet.
+- La herramienta solo escucha en este computador (`127.0.0.1`) y la página no carga nada de internet: tampoco las
+  fuentes, que están en la carpeta `estilo/fuentes/`.
 - Solo se conecta a internet para tres cosas: instalar las librerías, descargar el modelo de recorte y llamar a
   OpenRouter cuando confirmas unas escenas (o pulsas «Probar»).
 - La clave no aparece en la página, en los registros ni en los mensajes de error.
@@ -185,7 +202,15 @@ la primera (sus fotos dejarían de verse) y lleva su propia cuenta del tope de g
 - Con una tarjeta NVIDIA puedes abrir la versión acelerada con este otro comando:
   `uv run --directory estudio-fotos --no-default-groups --group gpu python -m estudio`.
   Puede necesitar CUDA y cuDNN instalados: si no están, la herramienta usa el procesador y lo dice.
-- Esta versión se probó en Mac; en Windows, aún sin probar.
+
+## Si vienes de la versión 1
+
+- Ajustes ya no tiene la marca del negocio (nombre, colores y logo): la página lleva el diseño de Ismagit.
+- La primera vez que abras esta versión, la herramienta quita esos datos de `estudio-fotos/ajustes.json` (la calidad
+  del recorte, el modelo de escenas y el tope se quedan como estaban) y borra `estudio-fotos/logo_negocio.png`, que
+  era una copia reducida de tu logo hecha por la herramienta. Tu logo original no se toca.
+- Tus resultados (`salidas/`), tus gastos (`gastos.jsonl`) y tu clave siguen donde estaban.
+- La escena «Fondo liso con los colores de tu marca» ahora es «Fondo liso de un color», y el color lo eliges tú.
 
 ## Para quien la mantiene
 
