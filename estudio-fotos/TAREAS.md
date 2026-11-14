@@ -117,7 +117,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       `test_servidor.py` (el campo `color` por HTTP; la nota de las escenas en `/api/opciones`), `test_privacidad.py`
       (la clave falsa enviada como color a las dos rutas: 400 sin repetirla) y el recorrido 4 de `test_e2e.py` (el
       selector solo se ve con esa escena).
-- [ ] **Paso 26 · Sin marca del negocio**: fuera el nombre, los colores y el logo de `ajustes.py`, `estudio.py`,
+- [x] **Paso 26 · Sin marca del negocio**: fuera el nombre, los colores y el logo de `ajustes.py`, `estudio.py`,
       `servidor.py` (las tres rutas del logo) y de la página; fuera el logo de ejemplo de `marca/`; `/web/` y
       `/estilo/` con `Cache-Control: no-cache`.
       Prueba: `test_ajustes.py` (solo quedan la calidad, el modelo y el tope; un `negocio` enviado no se guarda),

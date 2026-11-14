@@ -22,7 +22,7 @@ import pytest
 from PIL import Image
 
 import ayudas
-from conftest import RAIZ, fotos_de_muestra, lado_corto
+from conftest import fotos_de_muestra, lado_corto
 
 pytestmark = pytest.mark.e2e
 
@@ -300,40 +300,31 @@ def test_3_ajustes_la_clave_se_ve_enmascarada_y_probar_dice_conexion_correcta(pa
     # La clave quedó en el archivo de claves de la carpeta temporal (solo su línea) y no en los ajustes.
     assert (entorno.datos / ".env").read_text(encoding="utf-8") == f"OPENROUTER_API_KEY={clave}\n"
 
-    # La marca del negocio: nombre, colores y logo. La página usa esos colores.
-    pagina.fill("#negocio-nombre", "Café 2600")
-    for campo, color in (("#negocio-color-principal", "#1f3b2d"), ("#negocio-color-acento", "#c8a04b")):
-        pagina.locator(campo).evaluate(
-            "(campo, color) => { campo.value = color; campo.dispatchEvent(new Event('input', {bubbles: true})); }", color
-        )
-    pagina.set_input_files("#elegir-logo", str(RAIZ / "marca" / "cafe2600_logo.png"))
-    expect(pagina.locator("#vista-logo")).to_be_visible()
+    # Ajustes solo tiene la clave, la calidad del recorte y las escenas: sin marca del negocio (ni nombre, ni colores,
+    # ni logo), y sin nada que cambie los colores de la página.
+    expect(pagina.locator("#zona-ajustes h2")).to_have_text(["Ajustes", "Clave de OpenRouter", "Calidad del recorte", "Escenas con IA"])
+    expect(pagina.locator("#zona-ajustes input[type='color'], #zona-ajustes input[type='file']")).to_have_count(0)
+    expect(pagina.locator("[id*='negocio'], #zona-ajustes [id*='logo']")).to_have_count(0)
+    assert pagina.evaluate("() => document.documentElement.getAttribute('style')") is None
     pagina.check("input[name='calidad'][value='maxima']")
     pagina.select_option("#modelo-escenas", "google/gemini-nano-banana-2.1")
     pagina.fill("#tope-sesion", "2")
     pagina.click("#guardar-ajustes")
     expect(pagina.locator("#ajustes-guardados")).to_be_visible()
-    expect(pagina.locator("#nombre-negocio")).to_have_text("Café 2600")
-    expect(pagina.locator("#logo-negocio")).to_be_visible()
     expect(pagina.locator("#gasto-sesion")).to_have_text("Gastado en esta sesión: 0,00 $ de 2,00 $ (quedan 2,00 $).")
-    variable = "(nombre) => getComputedStyle(document.documentElement).getPropertyValue(nombre).trim()"
-    assert pagina.evaluate(variable, "--color-principal") == "#1F3B2D"
-    assert pagina.evaluate(variable, "--color-acento") == "#C8A04B"
-    assert pagina.evaluate("() => getComputedStyle(document.querySelector('.cabecera')).backgroundColor") == "rgb(31, 59, 45)"
-    expect(pagina).to_have_title("Estudio de fotos · Café 2600")
-    _captura(pagina, "3-ajustes-marca")
+    # Guardar no cambia ni los colores ni el título de la página.
+    assert pagina.evaluate("() => document.documentElement.getAttribute('style')") is None
+    expect(pagina).to_have_title("Estudio de fotos de producto")
+    _captura(pagina, "3-ajustes-guardados")
 
     guardado = json.loads((entorno.datos / "estudio-fotos" / "ajustes.json").read_text(encoding="utf-8"))
-    assert guardado == {
-        "negocio": {"nombre": "Café 2600", "color_principal": "#1F3B2D", "color_acento": "#C8A04B"},
-        "calidad_recorte": "maxima", "modelo_escenas": "google/gemini-nano-banana-2.1", "tope_sesion_usd": 2.0,
-    }
+    assert guardado == {"calidad_recorte": "maxima", "modelo_escenas": "google/gemini-nano-banana-2.1", "tope_sesion_usd": 2.0}
+    assert not list(entorno.datos.rglob("logo*"))  # no se guarda ningún logo
 
     # Al recargar la página, todo sigue ahí (y la clave sigue enmascarada).
     pagina.reload()
     expect(pagina.locator("#zona-ajustes")).to_be_visible()  # recuerda la zona
     expect(pagina.locator("#mascara-clave")).to_have_text("••••" + clave[-4:])
-    expect(pagina.locator("#negocio-nombre")).to_have_value("Café 2600")
     expect(pagina.locator("#tope-sesion")).to_have_value("2")
     expect(pagina.locator("input[name='calidad'][value='maxima']")).to_be_checked()
     assert clave not in pagina.content()

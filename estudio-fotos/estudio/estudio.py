@@ -415,7 +415,7 @@ class Estudio:
     # --- Ajustes y clave -----------------------------------------------------------------------------------------
 
     def cambiar_ajustes(self, cambios: object) -> None:
-        """Guarda en `ajustes.json` la marca, la calidad del recorte, el modelo de escenas y el tope (nunca la clave)."""
+        """Guarda en `ajustes.json` la calidad del recorte, el modelo de escenas y el tope (nunca la clave)."""
         try:
             with self._candado:
                 nuevos = los_ajustes.aplicar(self.ajustes, cambios)
@@ -425,15 +425,6 @@ class Estudio:
             raise ErrorEstudio(str(error))
         if nuevos["calidad_recorte"] != self.calidad_recorte:
             self.cambiar_calidad(nuevos["calidad_recorte"])
-
-    def guardar_logo(self, origen: Path) -> None:
-        try:
-            los_ajustes.guardar_logo(origen, self.config.logo)
-        except los_ajustes.ErrorAjustes as error:
-            raise ErrorEstudio(str(error))
-
-    def quitar_logo(self) -> None:
-        self.config.logo.unlink(missing_ok=True)
 
     def guardar_clave(self, clave: object) -> None:
         """Escribe la clave en `.env`. Desde aquí no vuelve a salir entera."""
@@ -453,16 +444,6 @@ class Estudio:
     def _clave_publica(self) -> dict:
         clave = self.clave()
         return {"guardada": clave is not None, "mascara": la_clave.mascara(clave) if clave else None}
-
-    def _negocio_publico(self) -> dict:
-        negocio = dict(self.ajustes["negocio"])
-        negocio["sobre_principal"] = los_ajustes.color_sobre(negocio["color_principal"])
-        negocio["sobre_acento"] = los_ajustes.color_sobre(negocio["color_acento"])
-        try:
-            negocio["logo"] = f"/api/logo?v={self.config.logo.stat().st_mtime_ns}"
-        except OSError:
-            negocio["logo"] = None
-        return negocio
 
     # --- Fotos ---------------------------------------------------------------------------------------------------
 
@@ -1025,7 +1006,6 @@ class Estudio:
                 "herramienta": HERRAMIENTA,
                 "version": VERSION,
                 "aviso_puerto": self.aviso_puerto,
-                "negocio": self._negocio_publico(),
                 "ajustes": {
                     "calidad_recorte": self.ajustes["calidad_recorte"],
                     "modelo_escenas": self.ajustes["modelo_escenas"],

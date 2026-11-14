@@ -24,7 +24,7 @@ def test_la_configuracion_normal_no_sale_de_herramientas_ia(entorno):
     assert configuracion.env == RAIZ / ".env"
     assert configuracion.modelos == RAIZ / "modelos"
     for ruta in (configuracion.ajustes, configuracion.gastos, configuracion.trabajo, configuracion.salidas,
-                 configuracion.logo, configuracion.medicion):
+                 configuracion.medicion):
         assert ruta.parent == CARPETA
 
 
@@ -37,7 +37,7 @@ def test_en_pruebas_todos_los_datos_van_a_la_carpeta_temporal(entorno, tmp_path)
     assert configuracion.recortador == "simulado"
     temporal = tmp_path.resolve()
     for ruta in (configuracion.env, configuracion.ajustes, configuracion.gastos, configuracion.trabajo,
-                 configuracion.salidas, configuracion.logo, configuracion.medicion):
+                 configuracion.salidas, configuracion.medicion):
         assert temporal in ruta.parents, f"{ruta.name} quedaría fuera de la carpeta temporal"
     # Lo que no es del usuario se sigue leyendo de la carpeta de la herramienta.
     assert configuracion.plataformas == CARPETA / "plataformas.json"

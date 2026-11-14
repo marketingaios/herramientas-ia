@@ -99,7 +99,7 @@ def test_la_pagina_cumple_su_politica_de_contenido():
 
 
 def test_el_codigo_de_la_pagina_escribe_los_datos_como_texto():
-    """Los nombres de archivo, el nombre del negocio y los mensajes nunca se insertan como HTML."""
+    """Los nombres de archivo, la escena que escribe el usuario y los mensajes nunca se insertan como HTML."""
     js = _lee("app.js")
     for prohibido in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval(", "new Function",
                       "createContextualFragment", "srcdoc", "DOMParser"):
@@ -135,11 +135,30 @@ def test_el_servidor_sirve_la_pagina_y_sus_archivos(servidor):
 @pytest.mark.parametrize("identificador", [
     "soltar", "elegir-fotos", "subiendo", "avisos-subida", "chip-modelo", "nota-modelo", "estado-modelo", "texto-modelo",
     "reintentar-modelo", "avance-recorte", "barra-recorte", "texto-recorte", "tarjeta-fotos", "lista-fotos",
-    "empezar-de-nuevo", "aviso-puerto", "sin-respuesta", "nombre-negocio", "logo-negocio",
+    "empezar-de-nuevo", "aviso-puerto", "sin-respuesta",
 ])
 def test_lo_que_usa_el_codigo_existe_en_la_pagina(identificador):
     assert f'id="{identificador}"' in _lee("index.html")
     assert f'"{identificador}"' in _lee("app.js")
+
+
+def test_ajustes_solo_tiene_la_clave_la_calidad_del_recorte_y_las_escenas():
+    """Versión 1.1: sin marca del negocio. Ni nombre, ni colores, ni logo; y la página ya no cambia de colores."""
+    html, js = _lee("index.html"), _lee("app.js")
+    ajustes = html[html.index('id="zona-ajustes"') : html.index("</main>")]
+    assert re.findall(r"<h2[^>]*>([^<]+)</h2>", ajustes) == ["Ajustes", "Clave de OpenRouter", "Calidad del recorte", "Escenas con IA"]
+    campos = set(re.findall(r'<(?:input|select|textarea)[^>]*\bid="([a-z0-9-]+)"', ajustes))
+    assert campos == {"clave", "modelo-escenas", "tope-sesion"}
+    assert set(re.findall(r'<input[^>]*\bname="([a-z]+)"', ajustes)) == {"calidad"}
+    assert 'type="file"' not in ajustes and 'type="color"' not in ajustes  # ni logo que subir ni colores que elegir
+    for resto in ("negocio", "logo", "Marca del negocio", "color_principal", "color_acento"):
+        assert resto not in ajustes, resto
+        assert resto not in js, resto
+    # El único selector de color de la página es el del fondo liso de las escenas.
+    assert re.findall(r'<input[^>]*type="color"[^>]*>', html) == ['<input type="color" id="color-escena" value="#d9d9d9" />']
+    # Nada de lo que llega del servidor cambia los colores ni el título de la página.
+    assert "documentElement.style" not in js and "--color" not in js and "document.title" not in js
+    assert re.findall(r'setProperty\("(--[a-z-]+)"', js) == ["--corte"]  # solo la línea del antes y el después
 
 
 def test_cada_identificador_que_pide_el_codigo_esta_en_la_pagina():

@@ -139,7 +139,7 @@ def test_una_clave_mala_desde_la_pagina_da_el_mensaje_sin_repetirla(config):
 def test_la_clave_no_se_escribe_en_ajustes_json(config, clave_falsa):
     estudio = Estudio(config)
     estudio.guardar_clave(clave_falsa)
-    estudio.cambiar_ajustes({"negocio": {"nombre": "Café 2600"}})
+    estudio.cambiar_ajustes({"tope_sesion_usd": 2, "modelo_escenas": "google/gemini-3-pro-image"})
     for archivo in config.datos.rglob("*"):
         if archivo.is_file():
             assert clave_falsa.encode() not in archivo.read_bytes(), f"la clave está en {archivo.name}"

@@ -11,7 +11,7 @@ import pytest
 from PIL import Image
 
 import ayudas
-from conftest import RAIZ, fotos_de_muestra, lado_corto
+from conftest import fotos_de_muestra, lado_corto
 
 CABECERAS_JSON = {"Content-Type": "application/json"}
 
@@ -145,7 +145,7 @@ def test_otra_web_no_puede_usar_la_herramienta(servidor, simulador):
 def test_la_propia_pagina_si_puede(servidor):
     propio = {"Origin": servidor.url, "Sec-Fetch-Site": "same-origin"}
     assert servidor.cliente.get("/api/estado", headers=propio).status_code == 200
-    assert servidor.cliente.put("/api/ajustes", content='{"negocio": {"nombre": "Café 2600"}}', headers={**propio, **CABECERAS_JSON}).status_code == 200
+    assert servidor.cliente.put("/api/ajustes", content='{"tope_sesion_usd": 1}', headers={**propio, **CABECERAS_JSON}).status_code == 200
     por_localhost = {"Host": f"localhost:{servidor.puerto}", "Origin": f"http://localhost:{servidor.puerto}"}
     assert servidor.cliente.get("/api/estado", headers=por_localhost).status_code == 200
     # Abrir la página desde un enlace (por ejemplo, el de la página de inicio) sí se puede.
@@ -230,16 +230,12 @@ def test_una_subida_que_pesa_demasiado_se_rechaza_antes_de_recibirla(servidor):
     assert "sube menos fotos a la vez".encode() in enorme
     sin_peso = _crudo(servidor, (cabeza + "Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n").encode())
     assert sin_peso.startswith(b"HTTP/1.1 411")
-    # Con los dos a la vez manda «por trozos» y el peso declarado sería mentira: tampoco se recibe (fotos y logo).
+    # Con los dos a la vez manda «por trozos» y el peso declarado sería mentira: tampoco se recibe.
     # La respuesta llega con solo las cabeceras: el servidor no espera a recibir ni un trozo.
-    for ruta in ("/api/fotos", "/api/ajustes/logo"):
-        trampa = _crudo(servidor, (
-            cabeza.replace("/api/fotos", ruta) + "Content-Length: 10\r\nTransfer-Encoding: chunked\r\n\r\n"
-        ).encode())
-        assert trampa.startswith(b"HTTP/1.1 411"), ruta
-        assert "La subida no dice cuánto pesa".encode() in trampa
+    trampa = _crudo(servidor, (cabeza + "Content-Length: 10\r\nTransfer-Encoding: chunked\r\n\r\n").encode())
+    assert trampa.startswith(b"HTTP/1.1 411")
+    assert "La subida no dice cuánto pesa".encode() in trampa
     assert servidor.cliente.get("/api/estado").json()["fotos"] == []
-    assert servidor.cliente.get("/api/logo").status_code == 404
     assert list(servidor.config.trabajo.glob("subidas/*")) == []  # sin restos de ninguna subida
 
 
@@ -340,20 +336,33 @@ def test_los_datos_deben_ser_json_y_de_tamano_razonable(servidor):
 # --- Ajustes y clave ------------------------------------------------------------------------------------------------
 
 
-def test_ajustes_del_negocio(servidor):
-    cambios = {"negocio": {"nombre": "Café 2600", "color_principal": "#1f3b2d", "color_acento": "#C8A04B"},
-               "calidad_recorte": "rapida", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 2.5}
+def test_los_ajustes_son_la_calidad_el_modelo_de_escenas_y_el_tope(servidor):
+    cambios = {"calidad_recorte": "rapida", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 2.5}
     assert servidor.cliente.put("/api/ajustes", json=cambios).json() == {"ok": True}
     estado = servidor.cliente.get("/api/estado").json()
-    assert (estado["negocio"]["nombre"], estado["negocio"]["color_principal"]) == ("Café 2600", "#1F3B2D")
-    assert estado["ajustes"] == {"calidad_recorte": "rapida", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 2.5, "tope_texto": "2,50 $"}
+    assert estado["ajustes"] == {**cambios, "tope_texto": "2,50 $"}
+    assert "negocio" not in estado
     guardado = json.loads(servidor.config.ajustes.read_text(encoding="utf-8"))
-    assert guardado["negocio"]["nombre"] == "Café 2600" and "clave" not in json.dumps(guardado).lower()
+    assert guardado == cambios and "clave" not in json.dumps(guardado).lower()
 
-    mal = servidor.cliente.put("/api/ajustes", json={"negocio": {"color_principal": "rojo; background:url(http://x)"}})
-    assert (mal.status_code, mal.json()) == (400, {"error": "El color debe tener la forma #RRGGBB, por ejemplo #1F3B2D."})
     otro = servidor.cliente.put("/api/ajustes", json={"modelo_escenas": "otro/modelo"})
     assert (otro.status_code, otro.json()) == (400, {"error": "Ese modelo de escenas no está en la lista."})
+
+
+@pytest.mark.parametrize("marca", [
+    {"nombre": "Mi tienda", "color_principal": "#123456", "color_acento": "#ABCDEF"},
+    {"color_principal": "rojo; background:url(http://x)"}, "un texto", ["lista"], 7,
+])
+def test_la_marca_del_negocio_ya_no_se_recibe_ni_se_guarda(servidor, marca):
+    """Lo que enviaba la página de la versión 1: el servidor no lo conoce. Ni lo comprueba, ni lo guarda, ni lo devuelve."""
+    respuesta = servidor.cliente.put("/api/ajustes", json={"negocio": marca, "tope_sesion_usd": 3})
+    assert (respuesta.status_code, respuesta.json()) == (200, {"ok": True})
+    guardado = json.loads(servidor.config.ajustes.read_text(encoding="utf-8"))
+    assert set(guardado) == {"calidad_recorte", "modelo_escenas", "tope_sesion_usd"} and guardado["tope_sesion_usd"] == 3.0
+    estado = servidor.cliente.get("/api/estado")
+    assert "negocio" not in estado.json()
+    for texto in (estado.text, servidor.cliente.get("/api/opciones").text, servidor.config.ajustes.read_text(encoding="utf-8")):
+        assert "Mi tienda" not in texto and "#123456" not in texto and "color_principal" not in texto
 
 
 @pytest.mark.parametrize("raro", [[], ["1:1"], {}, {"a": 1}])
@@ -365,9 +374,6 @@ def test_una_lista_donde_va_un_texto_se_rechaza_con_su_mensaje_y_no_con_un_fallo
 
     for campo in ("calidad_recorte", "modelo_escenas", "tope_sesion_usd"):
         rechazada(servidor.cliente.put("/api/ajustes", json={campo: raro}), campo)
-    for campo in ("nombre", "color_principal", "color_acento"):
-        rechazada(servidor.cliente.put("/api/ajustes", json={"negocio": {campo: raro}}), campo)
-    rechazada(servidor.cliente.put("/api/ajustes", json={"negocio": [raro]}), "negocio")
     rechazada(servidor.cliente.put("/api/ajustes/clave", json={"clave": raro}), "clave")
 
     (foto_id,) = [f["id"] for f in _subir(servidor, [("bolsa.jpg", ayudas.foto(1024, 1024))]).json()["fotos"]]
@@ -382,23 +388,31 @@ def test_una_lista_donde_va_un_texto_se_rechaza_con_su_mensaje_y_no_con_un_fallo
     assert servidor.cliente.get("/api/estado").status_code == 200  # y la herramienta sigue en pie
 
 
-def test_el_logo_del_negocio(servidor):
-    assert servidor.cliente.get("/api/logo").status_code == 404
-    logo = (RAIZ / "marca" / "cafe2600_logo.png").read_bytes()
-    assert servidor.cliente.post("/api/ajustes/logo", files={"logo": ("logo.png", logo, "image/png")}).json() == {"ok": True}
-    servido = servidor.cliente.get("/api/logo")
-    assert servido.status_code == 200 and servido.headers["content-type"] == "image/png"
-    with Image.open(io.BytesIO(servido.content)) as imagen:
-        assert imagen.format == "PNG" and max(imagen.size) <= 600
-    assert servidor.cliente.get("/api/estado").json()["negocio"]["logo"].startswith("/api/logo?v=")
-    assert list(servidor.config.trabajo.glob("subidas/*")) == []  # sin restos de la subida
+def test_las_rutas_del_logo_ya_no_existen(servidor):
+    """Ajustes ya no guarda ningún logo: las tres rutas de la versión 1 responden como cualquier ruta que no existe."""
+    logo = ayudas.foto(600, 200, "PNG")
+    antes = sorted(p.relative_to(servidor.config.datos_raiz).as_posix() for p in servidor.config.datos_raiz.rglob("*") if p.is_file())
+    for respuesta in (
+        servidor.cliente.get("/api/logo"),
+        servidor.cliente.post("/api/ajustes/logo", files={"logo": ("logo.png", logo, "image/png")}),
+        servidor.cliente.delete("/api/ajustes/logo"),
+        servidor.cliente.get("/api/ajustes/logo"),
+    ):
+        assert respuesta.status_code in (404, 405), respuesta.status_code
+        assert respuesta.json()["error"] in ("Esa dirección no existe.", "Esa acción no está permitida aquí.")
+    # Y la subida no dejó nada: ni un logo, ni restos en la carpeta de trabajo.
+    despues = sorted(p.relative_to(servidor.config.datos_raiz).as_posix() for p in servidor.config.datos_raiz.rglob("*") if p.is_file())
+    assert despues == antes and not any("logo" in nombre for nombre in despues)
+    assert list(servidor.config.trabajo.glob("subidas/*")) == []
 
-    svg = b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"
-    mal = servidor.cliente.post("/api/ajustes/logo", files={"logo": ("logo.svg", svg, "image/svg+xml")})
-    assert (mal.status_code, mal.json()) == (400, {"error": "El logo debe ser una imagen JPG, PNG o WEBP."})
 
-    assert servidor.cliente.delete("/api/ajustes/logo").json() == {"ok": True}
-    assert servidor.cliente.get("/api/logo").status_code == 404
+def test_la_pagina_y_su_estilo_se_comprueban_siempre_antes_de_usar_la_copia_guardada(servidor):
+    """Después de actualizar la herramienta, el navegador no se queda con el programa ni el estilo de la versión anterior."""
+    for ruta in ("/web/app.js", "/web/app.css", "/estilo/estilo.css", "/estilo/firma.html"):
+        respuesta = servidor.cliente.get(ruta)
+        assert respuesta.status_code == 200 and respuesta.headers["cache-control"] == "no-cache", ruta
+    for ruta in ("/", "/api/estado", "/api/opciones"):
+        assert servidor.cliente.get(ruta).headers["cache-control"] == "no-store", ruta
 
 
 def test_la_clave_se_guarda_y_solo_se_ve_enmascarada(servidor, clave_falsa):

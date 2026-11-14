@@ -77,7 +77,7 @@ def test_la_clave_no_aparece_en_ningun_sitio(servidor, simulador, clave_falsa, r
 
     guardada = pedir("PUT", "/api/ajustes/clave", json={"clave": clave_falsa})
     assert guardada.json()["clave"]["mascara"] == "••••" + clave_falsa[-4:]
-    pedir("PUT", "/api/ajustes", json={"negocio": {"nombre": "Café 2600"}})
+    pedir("PUT", "/api/ajustes", json={"tope_sesion_usd": 1})
     assert pedir("POST", "/api/ajustes/clave/probar").status_code == 200
 
     # Peticiones mal hechas que llevan la clave donde no toca: ninguna respuesta la repite.
@@ -85,8 +85,10 @@ def test_la_clave_no_aparece_en_ningun_sitio(servidor, simulador, clave_falsa, r
     assert pedir("PUT", "/api/ajustes/clave", content=f'["{clave_falsa}"]', headers=JSON).status_code == 422
     assert pedir("PUT", "/api/ajustes/clave", content=f"clave={clave_falsa}", headers={"Content-Type": "text/plain"}).status_code == 415
     assert pedir("PUT", "/api/ajustes/clave", json={"clave": f"{clave_falsa} con espacios"}).status_code == 400
-    assert pedir("PUT", "/api/ajustes", json={"negocio": {"nombre": clave_falsa}}).status_code == 400
-    assert pedir("PUT", "/api/ajustes", json={"negocio": {"color_principal": clave_falsa}}).status_code == 400
+    # La marca del negocio ya no existe: si llega con la clave dentro, se ignora y no se guarda en ningún sitio.
+    assert pedir("PUT", "/api/ajustes", json={"negocio": {"nombre": clave_falsa, "color_principal": clave_falsa}}).status_code == 200
+    assert pedir("PUT", "/api/ajustes", json={"calidad_recorte": clave_falsa}).status_code == 400
+    assert pedir("PUT", "/api/ajustes", json={"tope_sesion_usd": clave_falsa}).status_code == 400
     assert pedir("PUT", "/api/ajustes", json={"modelo_escenas": clave_falsa}).status_code == 400
     assert pedir("POST", "/api/medidas", json={"fotos": clave_falsa, "plataformas": [clave_falsa]}).status_code == 422
     assert pedir("POST", "/api/escenas/estimar", json={"fotos": ids, "escena": clave_falsa, "formato": clave_falsa}).status_code == 400

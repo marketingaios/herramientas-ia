@@ -27,7 +27,6 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from . import HERRAMIENTA, VERSION
-from .ajustes import LOGO_MAX_MB
 from .config import Config
 from .estudio import ErrorEstudio, Estudio
 from .registro import registro
@@ -35,7 +34,6 @@ from .subidas import MAX_BYTES, MAX_FOTOS, MENSAJE_DEMASIADAS
 
 MAX_JSON = 64 * 1024  # ninguna petición JSON de la página pasa de unos pocos KB
 MAX_SUBIDA = MAX_FOTOS * MAX_BYTES + 2 * 1024 * 1024  # 20 fotos de 25 MB y los separadores del formulario
-MAX_SUBIDA_LOGO = (LOGO_MAX_MB + 1) * 1024 * 1024
 MAX_ARCHIVOS_FORMULARIO = 100  # se leen más de 20 para poder decir «hasta 20 fotos a la vez» en vez de un error raro
 
 _HOST = re.compile(r"^(127\.0\.0\.1|localhost)(:\d{1,5})?$")
@@ -107,6 +105,10 @@ class Guardia:
                     salida[nombre] = valor
                 if ruta.startswith("/api/") or ruta == "/":
                     salida["Cache-Control"] = "no-store"
+                elif ruta.startswith(("/web/", "/estilo/")):
+                    # El navegador pregunta siempre si la hoja de estilos o el programa de la página cambiaron: así,
+                    # después de actualizar la herramienta, no se queda con los de la versión anterior.
+                    salida["Cache-Control"] = "no-cache"
             await send(mensaje)
 
         rechazo = None
@@ -177,16 +179,17 @@ def _comprobar_peso(peticion: Request, maximo: int) -> None:
         raise ErrorPeticion(413)
 
 
-async def _archivos_subidos(peticion: Request, campo: str, maximo: int) -> list[UploadFile]:
+async def _fotos_subidas(peticion: Request) -> list[UploadFile]:
+    """Los archivos del formulario de fotos: lo único que se sube a esta herramienta."""
     if peticion.headers.get("content-type", "").split(";")[0].strip().lower() != "multipart/form-data":
         raise ErrorPeticion(415, "Las fotos deben enviarse desde la página.")
-    _comprobar_peso(peticion, maximo)
+    _comprobar_peso(peticion, MAX_SUBIDA)
     try:
         formulario = await peticion.form(max_files=MAX_ARCHIVOS_FORMULARIO, max_fields=20)
     except HTTPException:
         # O el formulario está mal formado, o trae muchísimos archivos: en los dos casos no se guarda nada.
-        raise ErrorPeticion(400, MENSAJE_DEMASIADAS if campo == "fotos" else None) from None
-    return [valor for valor in formulario.getlist(campo) if isinstance(valor, UploadFile)]
+        raise ErrorPeticion(400, MENSAJE_DEMASIADAS) from None
+    return [valor for valor in formulario.getlist("fotos") if isinstance(valor, UploadFile)]
 
 
 def _a_disco(subida: UploadFile, carpeta: Path) -> Path:
@@ -269,7 +272,7 @@ def crear_aplicacion(config: Config, estudio: Estudio | None = None) -> FastAPI:
     @app.post("/api/fotos")
     async def subir_fotos(peticion: Request) -> dict:
         try:
-            archivos = await _archivos_subidos(peticion, "fotos", MAX_SUBIDA)
+            archivos = await _fotos_subidas(peticion)
             if not archivos:
                 raise ErrorPeticion(400, "No llegó ninguna foto.")
             if len(archivos) > MAX_FOTOS:
@@ -332,34 +335,6 @@ def crear_aplicacion(config: Config, estudio: Estudio | None = None) -> FastAPI:
         cuerpo = await _leer_json(peticion)
         await run_in_threadpool(estudio.cambiar_ajustes, cuerpo)
         return {"ok": True}
-
-    @app.post("/api/ajustes/logo")
-    async def poner_logo(peticion: Request) -> dict:
-        try:
-            archivos = await _archivos_subidos(peticion, "logo", MAX_SUBIDA_LOGO)
-            if len(archivos) != 1:
-                raise ErrorPeticion(400, "Elige un solo archivo para el logo.")
-
-            def guardar() -> None:
-                temporal = _a_disco(archivos[0], subidas)
-                try:
-                    estudio.guardar_logo(temporal)
-                finally:
-                    temporal.unlink(missing_ok=True)
-
-            await run_in_threadpool(guardar)
-            return {"ok": True}
-        finally:
-            await peticion.close()
-
-    @app.delete("/api/ajustes/logo")
-    def quitar_logo() -> dict:
-        estudio.quitar_logo()
-        return {"ok": True}
-
-    @app.get("/api/logo")
-    def logo() -> FileResponse:
-        return _imagen(config.logo, "image/png")
 
     @app.put("/api/ajustes/clave")
     async def guardar_clave(peticion: Request) -> dict:

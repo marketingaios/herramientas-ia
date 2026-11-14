@@ -63,10 +63,6 @@ class Config:
         return self.datos / "ajustes.json"
 
     @property
-    def logo(self) -> Path:
-        return self.datos / "logo_negocio.png"
-
-    @property
     def gastos(self) -> Path:
         return self.datos / "gastos.jsonl"
 

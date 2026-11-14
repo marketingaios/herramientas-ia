@@ -1,6 +1,6 @@
 /* Estudio de fotos de producto: la página.
-   Sin librerías y sin nada de internet. Todo lo que viene del usuario o del servidor (nombres de archivo, el nombre
-   del negocio, los mensajes) se escribe siempre como texto (textContent), nunca como HTML. */
+   Sin librerías y sin nada de internet. Todo lo que viene del usuario o del servidor (nombres de archivo, la escena
+   que escribe el usuario, los mensajes) se escribe siempre como texto (textContent), nunca como HTML. */
 "use strict";
 
 (() => {
@@ -101,24 +101,10 @@
   }
   window.addEventListener("hashchange", () => irA(location.hash.slice(1)));
 
-  // --- La marca del negocio y los avisos generales ----------------------------------------------------------------
+  // --- Los avisos generales ---------------------------------------------------------------------------------------
+  // La página lleva siempre el diseño de Ismagit: nada de lo que llega del servidor cambia sus colores ni su título.
 
   pintores.push((actual) => {
-    const negocio = actual.negocio;
-    const raiz = document.documentElement.style;
-    raiz.setProperty("--color-principal", negocio.color_principal);
-    raiz.setProperty("--color-acento", negocio.color_acento);
-    raiz.setProperty("--color-sobre-principal", negocio.sobre_principal);
-    raiz.setProperty("--color-sobre-acento", negocio.sobre_acento);
-
-    $("nombre-negocio").textContent = negocio.nombre;
-    mostrar($("nombre-negocio"), Boolean(negocio.nombre));
-    document.title = negocio.nombre ? `Estudio de fotos · ${negocio.nombre}` : "Estudio de fotos de producto";
-
-    const logo = $("logo-negocio");
-    if (negocio.logo && logo.getAttribute("src") !== negocio.logo) logo.src = negocio.logo;
-    mostrar(logo, Boolean(negocio.logo));
-
     $("aviso-puerto").textContent = actual.aviso_puerto || "";
     mostrar($("aviso-puerto"), Boolean(actual.aviso_puerto));
   });
@@ -759,9 +745,6 @@
   let ajustesRellenos = false;
 
   function rellenarAjustes(actual) {
-    $("negocio-nombre").value = actual.negocio.nombre;
-    $("negocio-color-principal").value = actual.negocio.color_principal.toLowerCase();
-    $("negocio-color-acento").value = actual.negocio.color_acento.toLowerCase();
     for (const radio of document.querySelectorAll('input[name="calidad"]')) {
       radio.checked = radio.value === actual.ajustes.calidad_recorte;
     }
@@ -782,11 +765,6 @@
 
   pintores.push((actual) => {
     if (!ajustesRellenos && opciones) rellenarAjustes(actual);
-    const logo = $("vista-logo");
-    if (actual.negocio.logo && logo.getAttribute("src") !== actual.negocio.logo) logo.src = actual.negocio.logo;
-    mostrar(logo, Boolean(actual.negocio.logo));
-    mostrar($("quitar-logo"), Boolean(actual.negocio.logo));
-    $("boton-logo").textContent = actual.negocio.logo ? "Cambiar el logo" : "Elegir un logo (opcional)";
   });
 
   $("guardar-ajustes").addEventListener("click", async () => {
@@ -798,11 +776,6 @@
         throw new Error("El tope de gasto debe ser un número, por ejemplo 1.");
       }
       await pedir("PUT", "/api/ajustes", {
-        negocio: {
-          nombre: $("negocio-nombre").value,
-          color_principal: $("negocio-color-principal").value,
-          color_acento: $("negocio-color-acento").value,
-        },
         calidad_recorte: calidad ? calidad.value : "automatica",
         modelo_escenas: $("modelo-escenas").value,
         tope_sesion_usd: tope,
@@ -812,31 +785,6 @@
       ajustesRellenos = false; // se vuelven a leer tal como quedaron guardados
     } catch (error) {
       decir("error-ajustes", error.message);
-    }
-    refrescar();
-  });
-
-  $("elegir-logo").addEventListener("change", async () => {
-    const archivo = $("elegir-logo").files[0];
-    if (!archivo) return;
-    const formulario = new FormData();
-    formulario.append("logo", archivo, archivo.name);
-    try {
-      await pedir("POST", "/api/ajustes/logo", formulario);
-      decir("error-logo", "");
-    } catch (error) {
-      decir("error-logo", error.message);
-    }
-    $("elegir-logo").value = "";
-    refrescar();
-  });
-
-  $("quitar-logo").addEventListener("click", async () => {
-    try {
-      await pedir("DELETE", "/api/ajustes/logo");
-      decir("error-logo", "");
-    } catch (error) {
-      decir("error-logo", error.message);
     }
     refrescar();
   });
