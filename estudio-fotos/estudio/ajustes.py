@@ -52,6 +52,33 @@ def guardar(ruta: Path, ajustes: dict) -> None:
     os.replace(temporal, ruta)
 
 
+def limpiar_version_1(ruta: Path, logo_antiguo: Path) -> None:
+    """Quita lo que dejó la versión 1 y ya no se usa: la marca del negocio de `ajustes.json` y el logo reducido.
+
+    - `ajustes.json`: si se lee bien y trae campos de más, se vuelve a escribir solo con la calidad del recorte, el
+      modelo de escenas y el tope, tal como estaban. Si está roto o ya está limpio, no se toca.
+    - `logo_antiguo`: era una copia reducida que hacía la propia herramienta, y se borra. El logo original de quien
+      usa la herramienta nunca estuvo aquí.
+
+    Las dos rutas vienen de la configuración. Si algo no se puede escribir o borrar, se queda como está: no impide
+    arrancar. No se registra nada: ni el contenido ni las rutas.
+    """
+    ruta = Path(ruta)
+    try:
+        guardados = json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        guardados = None  # no hay archivo, o está roto: no se toca
+    if isinstance(guardados, dict) and any(campo not in CAMPOS for campo in guardados):
+        try:
+            guardar(ruta, {campo: guardados[campo] for campo in CAMPOS if campo in guardados})
+        except OSError:
+            pass
+    try:
+        Path(logo_antiguo).unlink(missing_ok=True)
+    except OSError:
+        pass  # en uso, o sin permiso: se intentará en el siguiente arranque
+
+
 def aplicar(actuales: dict, cambios: object) -> dict:
     """Los ajustes con los cambios pedidos, ya comprobados. Lo que no viene en `cambios` no se toca.
 

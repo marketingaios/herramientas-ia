@@ -207,6 +207,7 @@ def crear_aplicacion(config: Config, estudio: Estudio | None = None) -> FastAPI:
     if estudio is None:
         estudio = Estudio(config)
         estudio.limpiar_trabajo()  # los temporales de la vez anterior
+        estudio.limpiar_version_1()  # y la marca del negocio que guardaba la versión 1
     subidas = config.trabajo / "subidas"
     subidas.mkdir(parents=True, exist_ok=True)
     # Los temporales de las subidas también quedan dentro de la carpeta de la herramienta.

@@ -63,6 +63,11 @@ class Config:
         return self.datos / "ajustes.json"
 
     @property
+    def logo_antiguo(self) -> Path:
+        """El logo reducido que guardaba la versión 1. Ya no se usa: solo se borra al arrancar (ver `ajustes.py`)."""
+        return self.datos / "logo_negocio.png"
+
+    @property
     def gastos(self) -> Path:
         return self.datos / "gastos.jsonl"
 

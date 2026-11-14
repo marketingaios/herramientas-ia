@@ -126,7 +126,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       con la clave falsa no deja la clave en ninguna respuesta ni archivo), `test_pagina.py` (la página no tiene
       campos de marca), `test_escenas.py` y `test_codigo.py` (sin restos de la marca; el vigilante sigue mirando
       `logo_negocio.png`) y el recorrido 3 de `test_e2e.py`.
-- [ ] **Paso 27 · Limpieza de lo que dejó la versión 1**: al arrancar, `ajustes.json` sin los campos de marca (la
+- [x] **Paso 27 · Limpieza de lo que dejó la versión 1**: al arrancar, `ajustes.json` sin los campos de marca (la
       calidad, el modelo y el tope quedan idénticos) y `logo_negocio.png` borrado; la ruta sale de la configuración
       (`Config.logo_antiguo`).
       Prueba: `test_ajustes.py` (una carpeta de la versión 1 completa queda limpia y conserva los tres ajustes; una

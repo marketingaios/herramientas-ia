@@ -10,6 +10,7 @@ import json
 
 import pytest
 
+import ayudas
 from conftest import CARPETA
 from estudio import ajustes as los_ajustes
 from estudio import costos
@@ -165,3 +166,156 @@ def test_un_ajustes_json_de_la_version_1_se_lee_sin_su_marca(config):
     assert json.loads(config.ajustes.read_text(encoding="utf-8")) == {
         "calidad_recorte": "maxima", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 5.0,
     }
+
+
+# --- Lo que dejó la versión 1 (paso 27) -------------------------------------------------------------------------------
+# Al arrancar se quita la marca del negocio de `ajustes.json` y se borra el logo reducido. Todo en la carpeta temporal.
+
+AJUSTES_V1 = {
+    "negocio": MARCA_ANTIGUA, "calidad_recorte": "maxima", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 2.5,
+}
+SIN_MARCA = {"calidad_recorte": "maxima", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 2.5}
+
+
+def _carpeta_de_la_version_1(config) -> dict:
+    """Deja la carpeta de datos como la dejó la versión 1 y devuelve lo que NO se debe tocar, con su contenido."""
+    config.ajustes.write_text(json.dumps(AJUSTES_V1, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    config.logo_antiguo.write_bytes(ayudas.foto(600, 200, "PNG"))
+    intactos = {
+        config.gastos: b'{"ts": "2026-11-13T21:56:33Z", "modelo": "google/gemini-nano-banana-2.1", "imagenes": 1}\n',
+        config.medicion: b'{"elegido": "procesador"}\n',
+        config.salidas / "2026-11-13_215633" / "recortes" / "producto_recorte.png": ayudas.foto(64, 64, "PNG"),
+        config.datos / "logo_negocio_original.png": b"otro archivo de quien usa la herramienta",
+    }
+    for ruta, datos in intactos.items():
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_bytes(datos)
+    return intactos
+
+
+def _foto_de(ruta) -> tuple[bytes, int]:
+    return ruta.read_bytes(), ruta.stat().st_mtime_ns
+
+
+def test_una_carpeta_de_la_version_1_queda_limpia_y_conserva_los_tres_ajustes(config, clave_falsa):
+    from estudio import clave as la_clave
+
+    intactos = _carpeta_de_la_version_1(config)
+    la_clave.guardar(config.env, clave_falsa)  # la clave (falsa) guardada como la guarda la herramienta
+    intactos[config.env] = config.env.read_bytes()
+    assert config.logo_antiguo.name == "logo_negocio.png" and config.logo_antiguo.parent == config.datos
+
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
+
+    assert json.loads(config.ajustes.read_text(encoding="utf-8")) == SIN_MARCA  # idénticos, y nada más
+    assert "Mi tienda" not in config.ajustes.read_text(encoding="utf-8")
+    assert not config.logo_antiguo.exists()
+    for ruta, datos in intactos.items():  # lo demás de la carpeta, tal como estaba
+        assert ruta.read_bytes() == datos, ruta.name
+    assert sorted(p.name for p in config.datos.iterdir() if p.is_file()) == [
+        "ajustes.json", "gastos.jsonl", "logo_negocio_original.png", "medicion.json",
+    ]  # sin restos temporales
+
+    # Una segunda arrancada no cambia nada: el archivo ya limpio ni se vuelve a escribir.
+    antes = _foto_de(config.ajustes)
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
+    assert _foto_de(config.ajustes) == antes and not config.logo_antiguo.exists()
+
+    # Y la herramienta arranca con esos tres ajustes.
+    estudio = Estudio(config)
+    assert estudio.publico()["ajustes"] == {**SIN_MARCA, "tope_texto": "2,50 $"}
+    estudio.cerrar()
+
+
+def test_los_tres_ajustes_se_conservan_tal_como_estaban_aunque_falte_alguno_o_no_valga(config):
+    """La limpieza no arregla ni inventa valores: solo quita lo que sobra."""
+    config.ajustes.write_text(json.dumps({"tope_sesion_usd": 7, "negocio": MARCA_ANTIGUA, "modelo_escenas": "modelo/desconocido", "otra": 1}), encoding="utf-8")
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
+    assert json.loads(config.ajustes.read_text(encoding="utf-8")) == {"modelo_escenas": "modelo/desconocido", "tope_sesion_usd": 7}
+
+
+@pytest.mark.parametrize("contenido", [
+    b"{ roto", b"", b"\xff\xfe no es texto", b'["una", "lista"]', b'"un texto"', b"null",
+    json.dumps(SIN_MARCA).encode(), b'{"tope_sesion_usd": 3}', b"{}",
+])
+def test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar(config, contenido):
+    config.ajustes.write_bytes(contenido)
+    config.logo_antiguo.write_bytes(b"un logo")
+    antes = _foto_de(config.ajustes)
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
+    assert _foto_de(config.ajustes) == antes  # ni un byte, ni la fecha
+    assert not config.logo_antiguo.exists()  # el logo se borra igual
+    estudio = Estudio(config)
+    assert set(estudio.publico()["ajustes"]) == {"calidad_recorte", "modelo_escenas", "tope_sesion_usd", "tope_texto"}
+    estudio.cerrar()
+
+
+def test_sin_archivos_de_la_version_1_no_pasa_nada_ni_se_crea_nada(config):
+    assert not config.ajustes.exists() and not config.logo_antiguo.exists()
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
+    assert not config.ajustes.exists() and not config.logo_antiguo.exists()
+
+
+def test_si_el_logo_no_se_puede_borrar_o_los_ajustes_no_se_pueden_escribir_arranca_igual(config, monkeypatch):
+    _carpeta_de_la_version_1(config)
+    config.logo_antiguo.unlink()
+    config.logo_antiguo.mkdir()  # algo que no se puede borrar como un archivo
+    (config.logo_antiguo / "dentro.txt").write_text("no se toca", encoding="utf-8")
+
+    def sin_permiso(*_argumentos, **_opciones):
+        raise PermissionError("no se puede escribir en /una/ruta/privada")
+
+    monkeypatch.setattr(los_ajustes, "guardar", sin_permiso)
+    antes = _foto_de(config.ajustes)
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)  # no lanza nada
+    assert _foto_de(config.ajustes) == antes
+    assert (config.logo_antiguo / "dentro.txt").read_text(encoding="utf-8") == "no se toca"
+    monkeypatch.undo()
+
+    estudio = Estudio(config)  # y la herramienta arranca, con sus tres ajustes
+    assert estudio.publico()["ajustes"]["tope_sesion_usd"] == 2.5 and "negocio" not in estudio.publico()
+    estudio.cerrar()
+
+
+def test_si_el_logo_es_un_enlace_solo_se_borra_el_enlace(config, tmp_path):
+    original = tmp_path / "logo-de-quien-usa-la-herramienta.png"
+    original.write_bytes(b"el logo original")
+    try:
+        config.logo_antiguo.symlink_to(original)
+    except OSError:
+        pytest.skip("este sistema no deja crear enlaces")
+    los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
+    assert not config.logo_antiguo.is_symlink() and original.read_bytes() == b"el logo original"
+
+
+def test_la_limpieza_se_hace_al_arrancar_el_servidor_y_no_escribe_nada_en_la_consola(config, capfd, caplog):
+    import logging
+
+    from estudio.servidor import crear_aplicacion
+
+    intactos = _carpeta_de_la_version_1(config)
+    with caplog.at_level(logging.DEBUG):
+        aplicacion = crear_aplicacion(config)  # como al arrancar de verdad: sin un estudio ya hecho
+    try:
+        assert json.loads(config.ajustes.read_text(encoding="utf-8")) == SIN_MARCA
+        assert not config.logo_antiguo.exists()
+        for ruta, datos in intactos.items():
+            assert ruta.read_bytes() == datos, ruta.name
+        consola = capfd.readouterr()
+        escrito = consola.out + consola.err + caplog.text
+        for resto in ("Mi tienda", "#123456", "negocio", "logo", str(config.datos_raiz)):
+            assert resto not in escrito, resto
+    finally:
+        aplicacion.state.estudio.cerrar()
+
+
+def test_la_limpieza_solo_usa_las_dos_rutas_de_la_configuracion():
+    """Ni rutas fijas ni búsquedas por la carpeta: `ajustes.json` y el logo antiguo, y nada más."""
+    import inspect
+
+    codigo = inspect.getsource(los_ajustes.limpiar_version_1)
+    assert "logo_negocio" not in codigo and "glob" not in codigo and "rmtree" not in codigo and "iterdir" not in codigo
+    assert codigo.count(".unlink(") == 1 and "Path(logo_antiguo).unlink(missing_ok=True)" in codigo
+    assert "registro" not in codigo.split('"""')[2] and "print(" not in codigo
+    estudio = (CARPETA / "estudio" / "estudio.py").read_text(encoding="utf-8")
+    assert "los_ajustes.limpiar_version_1(self.config.ajustes, self.config.logo_antiguo)" in estudio

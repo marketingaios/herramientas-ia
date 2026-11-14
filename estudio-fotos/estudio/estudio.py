@@ -243,6 +243,10 @@ class Estudio:
             except OSError:
                 pass  # un archivo en uso (Windows): se borrará en el siguiente arranque
 
+    def limpiar_version_1(self) -> None:
+        """Al arrancar: quita de la carpeta de datos la marca del negocio que guardaba la versión 1."""
+        los_ajustes.limpiar_version_1(self.config.ajustes, self.config.logo_antiguo)
+
     def cerrar(self) -> None:
         with self._hay_trabajo:
             self._cerrado = True

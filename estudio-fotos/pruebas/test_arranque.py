@@ -228,6 +228,36 @@ def test_arranca_escribe_la_direccion_y_responde_solo_en_este_computador(arranca
     assert "Traceback" not in salida and str(carpeta_datos) not in salida
 
 
+def test_al_arrancar_se_quita_la_marca_del_negocio_que_dejo_la_version_1(arrancar, carpeta_datos):
+    """La herramienta de verdad, sobre una carpeta de datos de la versión 1 (en la carpeta temporal)."""
+    import json
+
+    datos = carpeta_datos / "estudio-fotos"
+    datos.mkdir(parents=True, exist_ok=True)
+    los_tres = {"calidad_recorte": "rapida", "modelo_escenas": "google/gemini-3-pro-image", "tope_sesion_usd": 2.5}
+    marca = {"nombre": "Mi tienda de prueba", "color_principal": "#123456", "color_acento": "#ABCDEF"}
+    (datos / "ajustes.json").write_text(json.dumps({"negocio": marca, **los_tres}, ensure_ascii=False), encoding="utf-8")
+    (datos / "logo_negocio.png").write_bytes(ayudas.foto(600, 200, "PNG"))
+    (datos / "gastos.jsonl").write_text('{"ts": "2026-11-13T21:56:33Z", "imagenes": 1}\n', encoding="utf-8")
+
+    puerto = _puerto_libre()
+    proceso = arrancar(puerto)
+    proceso.esperar_linea("Estudio de fotos abierto en ")
+    assert json.loads((datos / "ajustes.json").read_text(encoding="utf-8")) == los_tres
+    assert not (datos / "logo_negocio.png").exists()
+    assert (datos / "gastos.jsonl").read_text(encoding="utf-8") == '{"ts": "2026-11-13T21:56:33Z", "imagenes": 1}\n'
+    with httpx.Client(trust_env=False, timeout=10) as cliente:
+        estado = cliente.get(f"http://127.0.0.1:{puerto}/api/estado")
+        assert estado.json()["ajustes"] == {**los_tres, "tope_texto": "2,50 $"}
+        assert "negocio" not in estado.json() and "Mi tienda" not in estado.text
+        assert cliente.get(f"http://127.0.0.1:{puerto}/api/logo").status_code == 404
+
+    proceso.parar()
+    salida = proceso.salida()
+    for resto in ("Mi tienda", "#123456", "negocio", "logo", "Traceback", str(carpeta_datos)):
+        assert resto not in salida, resto
+
+
 def test_con_el_puerto_ocupado_el_proceso_usa_el_siguiente_y_lo_dice(arrancar):
     puerto = _puerto_libre()
     with socket.socket() as otro_programa:
