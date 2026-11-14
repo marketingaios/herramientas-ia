@@ -71,8 +71,8 @@ def limpiar_version_1(ruta: Path, logo_antiguo: Path) -> None:
     if isinstance(guardados, dict) and any(campo not in CAMPOS for campo in guardados):
         try:
             guardar(ruta, {campo: guardados[campo] for campo in CAMPOS if campo in guardados})
-        except OSError:
-            pass
+        except (OSError, RecursionError):
+            pass  # no se puede escribir (sin permiso, o un valor con demasiados niveles): se queda como está
     try:
         Path(logo_antiguo).unlink(missing_ok=True)
     except OSError:

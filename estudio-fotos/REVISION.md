@@ -627,3 +627,100 @@ cambió ningún archivo) y las de punta a punta usan OpenRouter simulado.
 - Pasan las 846 pruebas (830 rápidas, 10 con el modelo real y 6 de punta a punta).
 - Las sugerencias S1 y S2 son de gravedad baja y no bloquean la entrega: pueden ir en esta versión o en la siguiente.
 
+## Segunda vuelta
+
+- **Fecha**: 14 de noviembre de 2026.
+- **Quién revisa**: el mismo Revisor, con las mismas reglas. Solo añadió este apartado.
+- **Qué se revisó**: el commit `be17584`, el único desde `39f999f`: solo lo corregido (S1 y S2) y sus pruebas. Cambia
+  `.gitignore`, `estudio/ajustes.py`, `pruebas/test_ajustes.py` y `pruebas/test_estructura.py`; esta sección entró en
+  el commit tal como la dejó la primera vuelta (la misma huella).
+- **Cómo**: `git show be17584`, lectura del código, las tres baterías otra vez y comprobaciones propias con datos de
+  mentira en `estudio-fotos/.pruebas-tmp/`, comparando con el código de `39f999f` cargado en memoria.
+
+| Punto | Estado |
+|---|---|
+| S1 · un `ajustes.json` con muchísimos niveles | **Corregido** lo anotado (al leer); queda un caso vecino, de gravedad baja: N1 |
+| S2 · el temporal de `ajustes.json`, fuera de git | **Corregido** |
+
+**S1 · Corregido (al leer)**
+
+- Código: `estudio/ajustes.py:34` (`cargar`) y `:69` (`limpiar_version_1`) atrapan también `RecursionError`.
+- Comprobado: con 100.000 y 200.000 corchetes abiertos, y con la marca con 100.000 niveles, el código de `39f999f`
+  lanza `RecursionError` en las dos funciones. El de `be17584` no lanza nada, no toca el archivo, borra el logo, y
+  `cargar` da los ajustes de fábrica.
+- Pruebas: dos casos nuevos de
+  `pruebas/test_ajustes.py::test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar` (`:240-242`):
+  `demasiados-niveles` y `la-marca-con-demasiados-niveles`. Con el código anterior fallan (comprobado con sus mismos
+  contenidos).
+
+**N1 · baja · el mismo error, al volver a escribir** (`estudio/ajustes.py:72-75`)
+
+- No lo abrió la corrección: con el código de `39f999f` pasa igual (comprobado). Es la otra mitad de S1, que el
+  Revisor no vio en la primera vuelta.
+- Qué pasa: si `ajustes.json` se lee bien, trae campos de marca y, además, uno de los tres ajustes lleva un valor
+  con entre unos 1.000 y unos 10.000 niveles, la limpieza intenta escribirlo «tal como estaba», y la escritura
+  (`guardar`, `:51`) lanza `RecursionError`. Ahí solo se atrapa `OSError` (`:74`).
+- Comprobado: con 1.000, 1.100, 2.000 y 5.000 niveles en `calidad_recorte`, y con 2.000 en `modelo_escenas`,
+  `limpiar_version_1` lanza `RecursionError`; el archivo queda igual, no queda ningún temporal y el logo no se borra.
+  En este computador (Python 3.12.13) la escritura falla desde 995 niveles y la lectura aguanta hasta 9.996. Por el
+  camino del arranque, con datos de mentira: el estudio se crea bien (ese valor queda como de fábrica) y la limpieza
+  lanza el error. Deducido del código, sin arrancar: la herramienta no arrancaría, porque
+  `estudio/servidor.py:207-210` no lo protege.
+- Cuándo no pasa: con 10.000 niveles o más lo para la lectura, que es lo corregido; y si lo profundo está solo en un
+  campo de marca, ese campo no se escribe.
+- Por qué es baja: como S1, no se puede provocar desde la página (ni la versión 1 ni la 1.1 guardan nunca un valor
+  así: los tres ajustes se comprueban antes de guardarse). Hay que escribir el archivo a mano, y basta arreglarlo o
+  quitarlo para que arranque.
+- Arreglo: atrapar también `RecursionError` en `estudio/ajustes.py:74`, y añadir a la prueba de los archivos rotos
+  un caso con la marca y unos 2.000 niveles en uno de los tres ajustes.
+
+**S2 · Corregido**
+
+- `.gitignore:16`: `*/ajustes.json.tmp-*`. `git check-ignore -v` lo confirma con `estudio-fotos/ajustes.json.tmp-123`.
+  No cubre de más: otros nombres parecidos y los archivos del proyecto siguen sin ignorar, y ningún archivo que git
+  ya seguía queda ahora ignorado (`git ls-files -ci --exclude-standard` no lista nada).
+- Prueba: `pruebas/test_estructura.py::test_git_deja_fuera_lo_privado`, con el caso nuevo (`:90`), que llama a
+  `git check-ignore`: sin esa línea de `.gitignore`, falla.
+
+### ¿Las correcciones abrieron algo nuevo?
+
+No se encontró nada.
+
+- Atrapar `RecursionError` al leer no esconde otra cosa: el archivo se trata como roto, igual que los demás casos, y
+  no se toca.
+- La línea nueva de `.gitignore` solo cubre ese nombre.
+- Dos notas de documentos, que no bloquean. Con los 3 casos nuevos, las rápidas son 833 y el total 849: `PRUEBAS.md`
+  sigue con 830 y 846, que son los números de antes de la revisión (y así lo dice). Y los números de línea de
+  `.gitignore` que cita la primera vuelta son los de `39f999f`: en `be17584`, desde la 16, van una línea más abajo.
+- Después de todas las pasadas, los archivos reales (`ajustes.json`, `gastos.jsonl`, `logo_negocio.png`,
+  `medicion.json`, `salidas/` y el archivo de la clave, que no se abrió) siguen con el mismo tamaño y la misma fecha,
+  y `git status` está limpio.
+
+### Pruebas pasadas, sobre `be17584`
+
+Una batería cada vez, todas a la primera:
+
+| Batería | Resultado | Tarda |
+|---|---|---|
+| Rápidas (`uv run --directory estudio-fotos --group pruebas pytest`) | 833 pasan, ninguna falla | 1 min 10 s |
+| Con el modelo real (`-m modelo`) | 10 pasan | 3 min 25 s |
+| De punta a punta (`-m e2e`) | 6 pasan | 59 s |
+| **Total** | **849 pasan** | |
+| Rápidas otra vez, después de escribir este apartado | 833 pasan | 1 min 11 s |
+
+### Lo que sigue sin poder comprobarse
+
+Lo mismo que en la primera vuelta: el arranque de verdad sobre los datos reales, la página a ojo, OpenRouter de
+verdad, Windows y Linux y otros navegadores. De N1, el número exacto de niveles depende de la versión de Python: se
+midió solo en este computador.
+
+### Veredicto final
+
+**Aprobada.**
+
+- S1 (lo anotado) y S2 están corregidas, y sus pruebas fallan sin el arreglo.
+- N1 es de gravedad baja y no bloquea: es el mismo arreglo de una línea que S1, y puede ir en esta versión o en la
+  siguiente.
+- Los puntos de la ficha que tocan los cambios siguen «Bien», y pasan las 849 pruebas (833 rápidas, 10 con el modelo
+  real y 6 de punta a punta).
+

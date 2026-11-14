@@ -240,6 +240,9 @@ def test_los_tres_ajustes_se_conservan_tal_como_estaban_aunque_falte_alguno_o_no
     # Con demasiados niveles, leerlo da otro error (`RecursionError`): tampoco impide arrancar (revisión de la 1.1, S1).
     pytest.param(b"[" * 100_000, id="demasiados-niveles"),
     pytest.param(b'{"negocio": ' + b"[" * 100_000 + b"]" * 100_000 + b"}", id="la-marca-con-demasiados-niveles"),
+    # Se lee bien, pero no se puede volver a escribir: el mismo error, al guardar (revisión de la 1.1, N1).
+    pytest.param(b'{"negocio": {"nombre": "x"}, "calidad_recorte": ' + b"[" * 2_000 + b"]" * 2_000 + b"}",
+                 id="un-ajuste-con-demasiados-niveles-para-escribirlo"),
 ])
 def test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar(config, contenido):
     config.ajustes.write_bytes(contenido)
@@ -248,6 +251,7 @@ def test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar(config
     los_ajustes.limpiar_version_1(config.ajustes, config.logo_antiguo)
     assert _foto_de(config.ajustes) == antes  # ni un byte, ni la fecha
     assert not config.logo_antiguo.exists()  # el logo se borra igual
+    assert not list(config.ajustes.parent.glob("ajustes.json.tmp-*"))  # y no queda ningún temporal
     estudio = Estudio(config)
     assert set(estudio.publico()["ajustes"]) == {"calidad_recorte", "modelo_escenas", "tope_sesion_usd", "tope_texto"}
     estudio.cerrar()
