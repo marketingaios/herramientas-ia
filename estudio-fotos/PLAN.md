@@ -3,6 +3,8 @@
 Plan del Constructor para la ficha 1 (`FICHA.md`). Computador de construcción: Mac con chip Apple (arm64), uv 0.11.8,
 git 2.50.1. Segunda versión del plan: incluye las correcciones del Revisor (apartado 7).
 
+El plan corto de la **versión 1.1** (ficha 1.1, punto 13) está en el apartado 8: dice qué cambia de este plan.
+
 ## 1. Arquitectura
 
 Una sola aplicación local: un servidor FastAPI en `http://127.0.0.1:8601` que sirve una página estática (HTML, CSS y
@@ -292,3 +294,177 @@ corregir 12 puntos antes de construir». Lo que anotó y lo que se hizo:
 | Enlace inventado para la página de inicio; la firma por JavaScript no se ve en el HTML | baja | decisión 30 |
 | Rutas que la ficha no pide | baja | decisión 34: quedan las mínimas, con prueba; se quitó «reintentar una foto» |
 | Dudas: 100 megapíxeles, CSV, punta a punta con modelo real, prueba real temprana, carpeta temporal de pytest, clave falsa generada | — | decisiones 5, 20, 23 y 24; pasos 5 y 12 |
+
+## 8. Versión 1.1 · plan corto
+
+La ficha pasó a la versión 1.1 (`FICHA.md` es su copia). En `CAMBIOS.md` la última versión era la 1, así que no se
+construye de nuevo: se pasa a la 1.1 con el mismo método (punto 13 de la ficha). Los apartados 1 a 7 son el plan de la
+versión 1 y se quedan como estaban; aquí va solo lo que cambia. Segunda versión de este plan corto: incluye las
+correcciones del Revisor (apartado 8.5).
+
+### 8.1 Qué cambia
+
+| Cambio (punto 13) | Qué se hace | Dónde |
+|---|---|---|
+| 1 · Diseño de Ismagit (punto 4.7) | las 11 variables de la ficha en `:root`, las fuentes Geist y Geist Mono locales, el logo arriba a la izquierda (28 px) con «Estudio de fotos» al lado, botones, tarjetas, campos, foco, estados, fondo real de cada foto y pantalla estrecha; se revisan Fotos, Resultados, Ajustes y los mensajes | `estilo/estilo.css`, `estilo/fuentes/`, `estilo/firma.html`, `web/index.html`, `web/app.css`, `web/app.js`, `inicio/` |
+| 2 · Sin marca del negocio | fuera el nombre, los dos colores y el logo: de la página, del servidor (rutas del logo), del estado y de `ajustes.json`; la página ya no cambia de colores | `estudio/ajustes.py`, `config.py`, `estudio.py`, `servidor.py`, `web/` |
+| 3 · Escenas | «Fondo liso con los colores de tu marca» pasa a ser «Fondo liso de un color», con un selector de color (por defecto, gris claro) | `estudio/escenas.py`, `estudio.py`, `servidor.py`, `web/` |
+| 4 · Muestras | las pruebas usan todas las fotos de `muestras/`, sin un número fijo | `pruebas/` |
+| 5 · Para Mac y Windows | el README dice que funciona en Mac y Windows, sin «aún sin probar» | `README.md` |
+| 6 · Versión | `CAMBIOS.md` con la 1.1; `AGENTS.md`, `inicio/index.html` y la herramienta dicen 1.1 | documentos, `estudio/__init__.py`, `pyproject.toml` |
+
+Además, lo que la ficha 1.1 cambia fuera del punto 13 y también se aplica: la nota de las escenas dice «Mercado Libre y
+Amazon piden fondo blanco en la foto principal» (ya sin Google); el README cuenta para qué productos sirve, con sus dos
+avisos (no es para fotos de personas; lo más difícil son los objetos transparentes); y «Carpetas comunes» de
+`AGENTS.md` dice lo mismo que el árbol del punto 3 de la ficha.
+
+Lo que el plan de la versión 1 decía y ya no vale: en el apartado 1, «el nombre del negocio» como dato del usuario; en
+el 2, `ajustes.py` ya no lleva colores ni logo; en el 3, las rutas `POST`/`DELETE /api/ajustes/logo` y `GET /api/logo`
+desaparecen; el riesgo de la neblina (ya no son «las 5 muestras»: son las que haya); las decisiones 27 y 32 (el logo
+del negocio) y la parte del logo de la 23 y la 34; en la 16, la escena de los colores de la marca; y la 24 (con las
+muestras de la guía 1.1, las fotos con el aviso de menos de 1.000 px son las que midan menos, no «dos»).
+
+### 8.2 Archivos
+
+- **Nuevos**: `estilo/fuentes/` (las 4 fuentes `.woff2` y `OFL.txt`, copiadas de `marca/fuentes/`),
+  `pruebas/test_diseno.py`.
+- **Cambian**: los de la tabla, las pruebas que nombraban la marca del negocio o contaban 5 muestras, y los documentos.
+- **Se borran, porque lo pide el dueño de la carpeta** (la regla «no borres lo que ya existe» sigue valiendo para todo
+  lo demás): las tres fotos de muestra y el logo de ejemplo de la versión 1, que ya no están en la guía 1.1. Se borran
+  por su nombre exacto, sin comodines (una de las fotos que se quedan empieza igual que dos de las que se van), y se
+  comprueba con `git status` que salen 4 borrados: 3 en el paso 24 y 1 en el 26. Quedan las 6 fotos de la guía 1.1 y,
+  en `marca/`, los logos de Ismagit y `fuentes/`.
+- **Entran en git** los archivos de la guía 1.1 que hoy solo están en la carpeta, cada uno en el primer commit que lo
+  usa: la ficha en el paso 23, las 4 fotos nuevas en el 24, y `marca/ismagit_logo.png` y `marca/fuentes/` en el 28.
+- **Sin dependencias nuevas**: no cambia ninguna versión; en `uv.lock` solo cambia la versión del proyecto.
+
+### 8.3 Decisiones de la versión 1.1
+
+Donde la ficha no dice nada, lo más simple:
+
+1. **Variables**: en `:root` quedan las 11 de la ficha con sus valores exactos, y solo se añaden medidas (los radios)
+   y las dos familias de fuentes. Las variables de la versión 1 desaparecen de todos los archivos. La prueba no es una
+   lista de nombres prohibidos: toda variable que usan las tres hojas de estilo está definida en `:root` (salvo
+   `--corte`, la del deslizador de cada foto), y cada una de las 11 de la ficha se usa al menos una vez.
+2. **Fuentes**: se copian a `estilo/fuentes/` (copias idénticas, byte a byte, a las de `marca/fuentes/`) y
+   `estilo.css` las declara con la regla `font-face` y una ruta relativa (`fuentes/…`): así sirven igual a la
+   herramienta (`/estilo/…`) y a la página de inicio, que se abre como archivo. Cada familia tiene dos archivos
+   (latino y latino ampliado), cada uno con su `unicode-range`, y peso de 100 a 900. Detrás van las fuentes del
+   sistema, por si un navegador no carga una fuente local en una página abierta como archivo: la página se sigue
+   leyendo (en Chromium, comprobado: las carga). Geist Mono va en cifras, medidas y nombres de archivo.
+   Las pruebas que hoy prohíben la regla `font-face` y cualquier `url(` no se borran: pasan a ser una lista blanca
+   igual de estricta. `font-face` solo en `estilo/estilo.css`; cada `url(` es `fuentes/<archivo>.woff2`, sin `//`,
+   `:`, `..` ni `data:`, y el archivo existe; `web/app.css` e `inicio/inicio.css` siguen sin `url(` ni importaciones.
+   `OFL.txt` trae dos direcciones escritas como texto: no son cargas y la prueba no las cuenta.
+3. **Logo**: `marca/ismagit_logo.png` (el de la guía 1.1, pensado para fondo oscuro) en la cabecera (28 px de alto),
+   en la firma (18 px) y como icono de la pestaña. Los otros dos logos de Ismagit se quedan en `marca/` (el dueño no
+   pidió borrarlos), pero ninguna página los usa ya y ninguna prueba exige que existan. Se le pregunta en la entrega
+   si los quiere fuera.
+4. **Un solo botón principal por zona**, y las zonas son las tres de la ficha: en Fotos, «Generar medidas»; en
+   Resultados, «Descargar todo (ZIP)»; en Ajustes, «Guardar ajustes». Los demás son secundarios (transparentes, con
+   borde `--linea`), también «Ver el costo», «Guardar clave» y «Sí, generar»: la ficha define solo dos tipos de botón,
+   y lo que destaca al confirmar un gasto es la caja de confirmación, con su borde en el acento. Se cuenta en el HTML
+   y también en el navegador, con los resultados ya pintados (el de Resultados lo crea el código).
+5. **El fondo real de cada foto**: los recortes, sobre cuadros claros; las fotos con fondo blanco, sobre blanco (también
+   en los huecos que deja una medida no cuadrada); las escenas, sobre `--card2`. Siempre dentro de su tarjeta oscura.
+6. **Avisos y errores sobre fondo oscuro**: el texto en `--aviso` o `--error` (o `--acento` cuando algo salió bien),
+   sobre `--card2` y con el borde del mismo color. Una prueba calcula el contraste de cada pareja de texto y fondo con
+   los valores de las variables y exige el nivel AA (4,5 a 1), y otra comprueba que las hojas solo usan esas parejas.
+7. **Sin marca del negocio**: `PUT /api/ajustes` ya solo conoce la calidad del recorte, el modelo de escenas y el tope;
+   un campo que no conoce (por ejemplo `negocio`, de una página antigua) no da error y no se guarda en ningún sitio.
+   Las tres rutas del logo dejan de existir (responden 404 o 405). La comprobación de la subida «por trozos» (la
+   corrección S1 de la revisión de la versión 1) se conserva para `/api/fotos`.
+8. **Limpieza de lo que dejó la versión 1** (paso propio, el 27, con sus pruebas): al arrancar, si `ajustes.json` se
+   lee bien y trae campos de más (los de marca), se vuelve a escribir solo con la calidad del recorte, el modelo de
+   escenas y el tope, que quedan idénticos; si está roto o ya está limpio, no se toca. Y se borra
+   `logo_negocio.png`, que era una copia reducida hecha por la propia herramienta: el logo original de quien la usa
+   no se toca. La ruta de ese archivo sale siempre de la configuración (`Config.logo_antiguo`, dentro de la carpeta
+   de datos), nunca de una ruta fija: en las pruebas es la carpeta temporal. Si algo no se puede borrar o escribir, la
+   herramienta arranca igual. Nada de esto escribe en la consola el nombre del negocio ni rutas. El vigilante de las
+   pruebas sigue mirando los archivos reales.
+9. **«Fondo liso de un color»**: el id de la escena pasa a ser `fondo-liso` (así se llaman sus archivos:
+   `<foto>_escena_fondo-liso_<ancho>x<alto>.jpg`). El color llega en el campo `color` de las dos rutas de escenas y se
+   valida siempre en el servidor, con cualquier escena: solo vale un texto con la forma exacta `#RRGGBB`; otra cosa
+   (otro tipo, vacío, mal formado) da un 400 con un mensaje fijo, que no repite lo enviado. Si no llega (o es nulo),
+   es gris claro (`#D9D9D9`). El color solo entra en el texto de la petición de `fondo-liso`; nunca en los registros
+   ni en `gastos.jsonl`. En Resultados, el título de esa escena lleva el código ya validado: «Fondo liso de un color
+   (#D9D9D9)». En la página, el selector de color solo se ve con esa escena, con su código al lado; cambiar el color
+   borra la estimación, como cualquier otro cambio del pedido.
+10. **Muestras**: una sola función en `pruebas/conftest.py` da «todas las fotos de `muestras/`» (JPG, PNG y WEBP,
+    ordenadas) y la usan todas las pruebas que las necesitan, que calculan con ellas lo que esperan (cuántas llevan
+    el aviso de menos de 1.000 px, cuántos archivos trae el ZIP). Con menos de 3 fotos (las que piden los recorridos)
+    o más de 20 (el máximo de una subida), la prueba lo dice.
+11. **El frasco de vidrio** es transparente, lo más difícil según la ficha. La ficha pide para cada recorte que la
+    máscara ocupe entre el 5 % y el 95 %; las pruebas de la versión 1 pedían además poca zona medio transparente
+    (menos del 3 %). Si el frasco falla solo en eso que la ficha no pide, ese extra se relaja para todas las fotos y
+    se anota en `PRUEBAS.md`. Nunca se saca una foto de la prueba.
+12. **Versión**: `1.1` en la herramienta y en los documentos; `1.1.0` en `pyproject.toml`.
+13. **Documentos**: `PRUEBAS.md` se actualiza sin vaciarlo: son nuevos el resumen, el tiempo por foto y los
+    recorridos; se conservan la medición de la aceleración (medida otra vez, con su fecha), los seis controles y lo
+    que no se probó. `REVISION.md` conserva la revisión de la versión 1 y añade la de la 1.1. La entrada de la
+    versión 1 de `CAMBIOS.md` no se toca (es historia), y la de la 1.1 arrastra sus tres pendientes. En ningún
+    documento, prueba ni archivo de código queda el negocio de ejemplo de la versión 1, tampoco sus colores; la prueba
+    que lo comprueba arma el nombre por trozos para no llevarlo escrito. Dos de las fotos que se quedan en
+    `muestras/` enseñan ese nombre en el producto: son de la guía 1.1 y se quedan. El historial de git no se reescribe.
+14. **Para Mac y Windows**: el README lo dice como la ficha. `PRUEBAS.md` sigue contando lo que se probó de verdad en
+    este computador, que es un Mac.
+15. **La página de inicio** lleva el mismo diseño: el logo arriba a la izquierda, la tarjeta de la herramienta con su
+    botón principal y la firma.
+16. **Pantalla estrecha**: la cabecera, las filas de botones y los campos saltan de línea; el recorrido de diseño
+    abre la página a 360 px de ancho y comprueba que no hay desplazamiento horizontal.
+17. **Un navegador con la página de la versión 1 guardada**: los archivos de `/web/` y `/estilo/` salen con
+    `Cache-Control: no-cache` (el navegador pregunta siempre si cambiaron): así nadie se queda con el código antiguo
+    de la página leyendo un estado que ya no trae la marca.
+18. **El recorrido de diseño** va antes del último recorrido (el que comprueba que ninguna petición salió de este
+    computador y que la consola quedó limpia) y deja la ventana como estaba. Fuerza y captura los estados y los
+    mensajes: vacío, un error (un archivo que no es una foto), un aviso (menos de 1.000 px), un «listo», la caja de
+    confirmación y el error del tope; de cada uno mira el color del texto y el del fondo ya calculados. Las capturas
+    van a `.pruebas-tmp/`, fuera de git.
+
+### 8.4 Riesgos de la versión 1.1
+
+| Riesgo | Qué hacemos |
+|---|---|
+| Las fuentes rompen la regla de «nada de internet» | lista blanca (decisión 2) en los archivos; y el recorrido de diseño comprueba en el navegador que Geist y Geist Mono quedan cargadas, ninguna con error, y que cada petición de fuente responde 200 desde este computador |
+| La política de la página (CSP) no deja cargar las fuentes | `font-src 'self'` ya estaba; lo comprueba el mismo recorrido |
+| Al pasar a fondo oscuro, algún texto queda sin leerse (oscuro sobre oscuro) en una pantalla o un mensaje | toda variable usada existe (decisión 1); el contraste se calcula (decisión 6); el recorrido de diseño mira los colores ya calculados por el navegador en cada estado y cada mensaje (decisión 18); y se revisan a ojo las capturas de Fotos, Resultados, Ajustes y los mensajes |
+| La limpieza al arrancar borra o estropea algo de quien usa la herramienta | solo toca dos archivos que escribía la propia herramienta, con la ruta sacada de la configuración; conserva los otros tres ajustes idénticos; no toca un archivo roto; tiene su paso y sus pruebas (decisión 8), y queda dicho en `CAMBIOS.md` |
+| El campo `color` llega del navegador y acaba en un texto que se envía a OpenRouter | forma exacta `#RRGGBB` o nada (decisión 9); la prueba de privacidad envía la clave falsa como color a las dos rutas y comprueba el 400 sin repetirla |
+| El frasco de vidrio (transparente) se recorta mal | decisión 11; lo que salga se anota en `PRUEBAS.md` |
+| Una prueba que dependa de fotos que ya no están | decisión 10 |
+| Se borra un archivo de más | borrado por nombre exacto y `git status` (apartado 8.2) |
+
+### 8.5 Notas del Revisor sobre el plan de la 1.1
+
+El Revisor (subagente con el contexto limpio, que no escribe archivos) comparó la primera versión de este plan corto
+con la ficha 1.1 y con el código de la versión 1. Veredicto: «Hay que corregir 10 puntos antes de construir» (1 de
+gravedad alta y 9 de gravedad media), más 11 notas bajas. Lo que anotó y lo que se hizo:
+
+| Nota del Revisor | Gravedad | Corrección |
+|---|---|---|
+| La limpieza al arrancar es el único código nuevo que borra y reescribe archivos reales, y no tenía paso propio, ni prueba del borrado del logo, ni decía de dónde sale la ruta | alta | decisión 8 y paso 27 propio, con sus pruebas (carpeta de la versión 1 completa, segunda arrancada sin cambios, archivo roto) |
+| El paso 23 deja una prueba rápida en rojo: la guía 1.1 ya dejó sus fotos en `muestras/` y una prueba contaba 5 | media | anotado en el paso 23; el paso 24 la arregla |
+| El paso del diseño era demasiado grueso | media | partido en tres: pasos 28, 29 y 30 |
+| Las pruebas que prohibían `font-face` y `url(` podían borrarse sin más | media | lista blanca igual de estricta (decisión 2 y riesgo 1) |
+| El campo `color`: la prueba de privacidad de los colores desaparecía con la marca; faltaba decir qué pasa con otra escena, vacío u otro tipo | media | decisión 9, riesgo 5 y paso 25 |
+| El paso 26 no nombraba todas las pruebas de la marca, ni qué pasa con la corrección S1 | media | decisión 7 y paso 26, con la lista |
+| El paso de documentos podía dejarse «Carpetas comunes» de `AGENTS.md`, la nota de Google del README y otras líneas | media | apartado 8.1 y paso 31, con sus pruebas |
+| Al frasco de vidrio las pruebas le pedían más que la ficha | media | decisión 11 |
+| «`PRUEBAS.md` se vuelve a escribir» podía perder la aceleración, los seis controles y lo no probado; los pendientes de `CAMBIOS.md` | media | decisión 13 y pasos 31 y 32 |
+| El recorrido de diseño no obligaba a que aparecieran los mensajes | media | decisión 18 y paso 30 |
+| Números fijos de muestras en muchas pruebas; seis sitios buscaban solo `*.jpg` | baja | decisión 10 y paso 24 |
+| «Sí, generar» con borde de acento era un tercer tipo de botón | baja | decisión 4: secundario normal |
+| El botón principal de Resultados lo crea el código: en el HTML no se ve | baja | decisión 4: se cuenta también en el navegador |
+| Mejor que una lista de variables prohibidas: toda variable usada existe y las 11 se usan | baja | decisión 1 |
+| El recorrido de diseño, antes del último; pasar la batería de punta a punta en los pasos que tocan la página | baja | decisión 18 y pasos 24 a 30 |
+| Los otros dos logos de Ismagit: conservarlos, sin pruebas que los exijan, y preguntar al dueño | baja | decisión 3 |
+| Borrar por nombre exacto; los archivos de la guía que aún no están en git | baja | apartado 8.2 |
+| El paso final no nombraba la línea de cierre; la revisión corta no decía qué puntos | baja | pasos 33 y 34 |
+| Rastros del negocio de ejemplo que una búsqueda del nombre no ve: sus colores en las pruebas; dos fotos que se quedan lo enseñan | baja | decisión 13 |
+| Los documentos no pueden llevar el carácter de las direcciones de correo: `font-face` se escribe sin él | baja | así se escribe en todos |
+| Un navegador con la página de la versión 1 guardada se rompería con el estado nuevo | baja | decisión 17 y paso 26 |
+
+Lo que el Revisor dio por bueno aunque era fácil dudar: conservar los otros dos logos; cambiar el id de la escena (el
+antiguo llevaba «marca» en el nombre de cada archivo); no dar error con un `negocio` desconocido; las fuentes del
+sistema como respaldo (no son de internet); el README «Para Mac y Windows» con `PRUEBAS.md` diciendo lo que se probó; y
+el orden de los pasos, que no deja pruebas rotas entre uno y otro.

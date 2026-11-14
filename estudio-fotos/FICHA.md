@@ -1,8 +1,8 @@
 # Estudio de fotos de producto
 
-**Construyamos con IA · ficha 1 · versión 1 · noviembre de 2026 · guía de Ismagit**
+**Construyamos con IA · ficha 1 · versión 1.1 · noviembre de 2026 · guía de Ismagit**
 
-Probado en Mac; en Windows, aún sin probar.
+Para Mac y Windows.
 
 Esta ficha es todo lo que tu agente de IA (Claude Code, Codex u OpenCode) necesita para construir en tu computador una
 herramienta que convierte las fotos de tus productos en fotos listas para vender: sin fondo, con fondo blanco, en las
@@ -18,9 +18,19 @@ medidas de cada tienda online y, si quieres, en escenas hechas con IA.
 2. Quita el fondo en tu computador: gratis, y tus fotos no salen de tu computador.
 3. Pone el producto sobre fondo blanco puro, centrado, en las medidas de Mercado Libre, Amazon, Shopify, Tiendanube,
    Instagram, el catálogo de Facebook e Instagram, WhatsApp Business y Google.
-4. Si quieres, crea escenas con IA: tu producto sobre una mesa, en una cocina, con los colores de tu marca. Antes de
-   gastar, te dice cuánto cuesta.
+4. Si quieres, crea escenas con IA: tu producto sobre una mesa, en una cocina, sobre un fondo del color que elijas.
+   Antes de gastar, te dice cuánto cuesta.
 5. Descargas todo en un ZIP.
+
+### Para qué productos sirve
+
+Para fotos de **objetos**: ropa, calzado, bolsos, cosmética, alimentos envasados, tazas, artesanía, electrónica,
+juguetes. Sirve a cualquiera que venda en línea o publique sus productos: una tienda online, un catálogo de WhatsApp, un
+perfil de Instagram, un marketplace.
+
+- No es para fotos de personas ni de modelos con la ropa puesta: el recorte busca un objeto.
+- Lo más difícil son los objetos **transparentes** (vidrio, plástico claro) y los bordes muy finos: revisa el recorte
+  antes de publicar.
 
 ### Qué necesitas
 
@@ -42,10 +52,10 @@ medidas de cada tienda online y, si quieres, en escenas hechas con IA.
 2. Pon dentro este archivo (`instrucciones.md`) y las carpetas `muestras` y `marca` de la guía.
 3. Abre tu agente en esa carpeta y escribe: **Lee instrucciones.md y construye la herramienta**.
 4. Cuando termine, escribe: **Abre el estudio de fotos**.
-5. En la página, entra en **Ajustes**: pon el nombre y los colores de tu negocio y, si quieres escenas con IA, tu clave
-   de OpenRouter.
+5. Si quieres escenas con IA, entra en **Ajustes** y pon tu clave de OpenRouter.
 
-Las fotos de `muestras` son de un negocio de ejemplo, Café 2600, y están hechas con IA.
+Las fotos de `muestras` son fotos de ejemplo hechas con IA: café, una zapatilla, un bolso, una camiseta y un frasco de
+vidrio.
 
 ### Cómo saber si funciona bien: seis controles
 
@@ -143,9 +153,9 @@ herramientas-ia/
 ├── .env               las claves: lo escribe Ajustes, nunca se lee ni va a git
 ├── .gitignore         .env, modelos/, */trabajo/, */salidas/, gastos, entornos virtuales y cachés
 ├── instrucciones.md   esta ficha
-├── muestras/          fotos de ejemplo (Café 2600)
-├── marca/             los logos de Ismagit para la firma y el de Café 2600, para probar Ajustes
-├── estilo/            estilo.css común (los colores de la marca como variables) y la firma
+├── muestras/          fotos de ejemplo hechas con IA
+├── marca/             el logo de Ismagit y las fuentes Geist (fuentes/)
+├── estilo/            estilo.css común con el diseño de Ismagit (punto 4.7) y la firma
 ├── modelos/           los modelos descargados, compartidos por todas las herramientas
 ├── inicio/index.html  la página de inicio: la lista de herramientas, con su dirección
 └── estudio-fotos/     esta herramienta
@@ -162,7 +172,7 @@ herramientas-ia/
 **`estudio-fotos/`** tiene además:
 
 - `README.md`: cómo se abre y cómo se usa, para el dueño del negocio;
-- `CAMBIOS.md`: la versión 1;
+- `CAMBIOS.md`: las versiones (1 y 1.1);
 - `PLAN.md`, `TAREAS.md`, `PRUEBAS.md` y `REVISION.md`;
 - `plataformas.json`;
 - las pruebas;
@@ -254,7 +264,7 @@ Las plataformas van en `plataformas.json`, que el usuario puede editar, con esto
   cualquier negocio, y el campo para escribir la tuya:
   - «Mesa de madera clara con luz de mañana»;
   - «Cocina moderna, encimera de piedra»;
-  - «Fondo liso con los colores de tu marca»;
+  - «Fondo liso de un color» (el color se elige con un selector; por defecto, gris claro);
   - «Exterior con luz natural suave»;
   - «Estudio con sombra suave».
 - Los modelos, en Ajustes (los ids de OpenRouter; el costo de partida por imagen de 1K, que se corrige con los costos
@@ -282,8 +292,8 @@ Las plataformas van en `plataformas.json`, que el usuario puede editar, con esto
 - Las escenas llevan en sus metadatos la marca IPTC de imagen hecha con IA, en XMP: `Iptc4xmpExt:DigitalSourceType` con
   el valor `http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia`. Google Merchant Center la exige y
   prohíbe quitarla: se conserva también cuando la escena cambia de medida.
-- En la página, las escenas se marcan «Para redes y fotos secundarias»: Mercado Libre, Amazon y Google piden fondo
-  blanco en la foto principal.
+- En la página, las escenas se marcan «Para redes y fotos secundarias»: Mercado Libre y Amazon piden fondo blanco
+  en la foto principal.
 
 #### 4.5 Resultados y descarga
 
@@ -298,17 +308,45 @@ Las plataformas van en `plataformas.json`, que el usuario puede editar, con esto
   `GET https://openrouter.ai/api/v1/key` (`limit`, `limit_remaining` y `usage`) y responde, por ejemplo, «Conexión
   correcta · límite 2,00 $ · usado 0,12 $». La herramienta lee la clave del `.env` cada vez que la necesita: si cambia,
   no hace falta reiniciarla.
-- **Marca del negocio**: nombre, color principal, color de acento y logo (opcional). La página usa esos colores.
 - **Calidad del recorte**: Automática (recomendada), Máxima o Rápida.
 - **Escenas**: el modelo y el tope de gasto por sesión.
 - Los ajustes, sin la clave, se guardan en `estudio-fotos/ajustes.json`.
 
-#### 4.7 Diseño
+#### 4.7 Diseño: el de Ismagit, siempre
 
-- Limpio, con la marca del negocio, y se lee bien en un portátil.
-- Estados claros: vacío («Arrastra aquí tus fotos»), trabajando (la barra), terminado y error.
-- En el pie de cada página, la firma de Ismagit: el logo pequeño de `marca/` y el texto «Hecho con la guía de Ismagit»,
-  con enlace a `https://marketingaios.com/?origen=herramienta-estudio-fotos`.
+Todas las herramientas de esta carpeta llevan el mismo diseño, el de Ismagit. Va en `estilo/estilo.css`, con las
+variables en `:root`, y cada herramienta lo usa:
+
+| Variable | Valor | Para qué |
+|---|---|---|
+| `--bg` | `#0B0C0D` | fondo de la página |
+| `--card` | `#111315` | tarjetas y zonas |
+| `--card2` | `#15171A` | tarjetas dentro de tarjetas, campos |
+| `--texto` | `#F2F2F0` | texto |
+| `--texto-lectura` | `#C5C7C5` | párrafos largos |
+| `--gris` | `#8B8D8F` | textos secundarios y notas |
+| `--linea` | `rgba(255,255,255,.10)` | bordes y separadores |
+| `--acento` | `#AFF320` | botón principal, barra de avance, foco, lo activo |
+| `--acento-oscuro` | `#0A0B0C` | texto sobre el acento |
+| `--error` | `#F07470` | errores |
+| `--aviso` | `#D8A35D` | avisos |
+
+- **Fuentes**: Geist para todo y Geist Mono para cifras, medidas y nombres de archivo, desde `marca/fuentes/` con
+  `@font-face` (cópialas a `estilo/fuentes/`; son variables, del 100 al 900). Nada de Google Fonts ni de otra fuente de
+  internet. La licencia de las fuentes (`OFL.txt`) va junto a ellas.
+- **Logo**: `marca/ismagit_logo.png` arriba a la izquierda, de 28 px de alto, con el nombre de la herramienta al lado
+  («Estudio de fotos»), y en el pie la firma.
+- **Botones**: el principal, con fondo `--acento` y texto `--acento-oscuro`, esquinas redondas (999px); el secundario,
+  transparente con borde `--linea`. Uno solo principal por zona.
+- **Tarjetas**: fondo `--card`, borde `--linea`, esquinas de 12 px. Los campos, fondo `--card2`.
+- **Las fotos** se juzgan sobre su fondo real: los recortes sobre un fondo de cuadros claros, las fotos con fondo blanco
+  sobre blanco, dentro de su tarjeta oscura.
+- El foco del teclado se ve (un contorno `--acento` de 2 px) y el texto cumple el contraste AA.
+- Estados claros: vacío («Arrastra aquí tus fotos»), trabajando (la barra en `--acento`), terminado y error.
+- Se lee bien en un portátil y no se rompe en una pantalla estrecha.
+- En el pie de cada página, la firma de Ismagit: el logo pequeño y el texto «Hecho con la guía de Ismagit», con enlace a
+  `https://marketingaios.com/?origen=herramienta-estudio-fotos`.
+- La herramienta no tiene una marca propia ni la del negocio de quien la usa: es una herramienta de Ismagit.
 
 ### 5. Mensajes de error
 
@@ -356,13 +394,14 @@ Con OpenRouter, decide por el código HTTP y por `error.metadata.limit_source`, 
 - las escenas guardadas llevan la marca IPTC de imagen hecha con IA;
 - las subidas: formato, tamaño y foto dañada.
 
-**Con el modelo real**, aparte (la primera vez descarga el modelo): recorta las 5 fotos de `muestras/`, comprueba que
+**Con el modelo real**, aparte (la primera vez descarga el modelo): recorta todas las fotos de `muestras/`, comprueba que
 cada recorte tiene un producto (la máscara ocupa entre el 5 % y el 95 % de la foto) y anota el tiempo por foto.
 
 **De punta a punta**, con Playwright y Chromium sin ventana, y el servidor arrancado en otro puerto con
 `NO_ABRIR_NAVEGADOR=1`:
 
-1. abre la página, sube las 5 fotos de `muestras/`, espera la barra hasta «5 de 5» y ve los 5 recortes;
+1. abre la página, sube todas las fotos de `muestras/`, espera la barra hasta el final («N de N») y ve un recorte por
+   foto;
 2. elige Mercado Libre, Amazon e Instagram, genera, descarga el ZIP y comprueba los archivos;
 3. en Ajustes guarda una clave falsa, ve «••••» con los 4 últimos caracteres, pulsa Probar (simulado) y ve «Conexión
    correcta»;
@@ -431,3 +470,25 @@ veremos en otro episodio.
 - Textos alternativos y nombres de archivo pensados para el SEO.
 - Procesar una carpeta entera.
 - Exportar para el catálogo de Shopify o de Meta.
+
+### 13. Si ya tienes la versión 1
+
+Si en `estudio-fotos/CAMBIOS.md` la última versión es la 1, no la construyas de nuevo: pásala a la 1.1 con el mismo
+método (Plan corto en `PLAN.md` y `TAREAS.md`, un commit por paso, pruebas, revisión, demo). Los cambios:
+
+1. **Diseño de Ismagit** (punto 4.7): `estilo/estilo.css` con las variables nuevas, las fuentes Geist locales, el logo
+   arriba a la izquierda, los botones en el acento. Revisa todas las pantallas: Fotos, Resultados, Ajustes y los
+   mensajes.
+2. **Sin marca del negocio**: en Ajustes quedan solo la clave de OpenRouter, la calidad del recorte y las escenas.
+   Quita los campos de marca de la página, del servidor y de `ajustes.json`, y el logo que guardaba Ajustes. La página
+   ya no cambia de colores.
+3. **Escenas**: «Fondo liso con los colores de tu marca» pasa a ser «Fondo liso de un color», con el selector de color.
+4. **Muestras**: en `muestras/` hay fotos nuevas (zapatilla, bolso, camiseta, frasco de vidrio). Las pruebas usan todas
+   las fotos de la carpeta, sin contar con un número fijo.
+5. **Para Mac y Windows**: el README dice que funciona en Mac y Windows, sin «aún sin probar».
+6. En `CAMBIOS.md`, la versión 1.1 con estos cambios; en `AGENTS.md` y en `inicio/index.html`, la versión 1.1.
+
+La Revisión (punto 7) es corta: comprueba los puntos que tocan estos cambios (sobre todo el 9: la página no carga nada de
+internet, tampoco las fuentes) y que las pruebas pasan todas. Al final, una línea sola:
+
+`TERMINADO: estudio-fotos 1.1`
