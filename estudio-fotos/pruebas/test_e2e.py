@@ -515,7 +515,258 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
     assert len(simulador.peticiones) == antes + 3 and len(gastos.read_text(encoding="utf-8").splitlines()) == 2
 
 
-def test_5_la_pagina_no_cargo_nada_de_internet_ni_dio_errores(pagina, entorno):
+# Los colores de la ficha (punto 4.7), como los calcula el navegador.
+BG, CARD, CARD2 = "rgb(11, 12, 13)", "rgb(17, 19, 21)", "rgb(21, 23, 26)"
+TEXTO, LECTURA, GRIS = "rgb(242, 242, 240)", "rgb(197, 199, 197)", "rgb(139, 141, 143)"
+LINEA, ACENTO, ACENTO_OSCURO = "rgba(255, 255, 255, 0.1)", "rgb(175, 243, 32)", "rgb(10, 11, 12)"
+ERROR, AVISO, BLANCO, NADA = "rgb(240, 116, 112)", "rgb(216, 163, 93)", "rgb(255, 255, 255)", "rgba(0, 0, 0, 0)"
+
+
+def _estilo(elemento, *propiedades) -> list[str]:
+    """Lo que el navegador ya calculó para un elemento: `_estilo(boton, "color", "background-color")`."""
+    return elemento.evaluate("(e, propiedades) => propiedades.map(p => getComputedStyle(e).getPropertyValue(p))", list(propiedades))
+
+
+def _fuente(elemento) -> str:
+    return _estilo(elemento, "font-family")[0].replace('"', "").split(",")[0].strip()
+
+
+def _rellenos_de_acento(pagina) -> list[str]:
+    """Los botones y enlaces a la vista que van rellenos de acento: los principales."""
+    return pagina.evaluate(
+        """() => [...document.querySelectorAll('button, a')]
+            .filter(b => b.offsetParent !== null && getComputedStyle(b).backgroundColor === 'rgb(175, 243, 32)')
+            .map(b => b.textContent.trim())"""
+    )
+
+
+def _quieto(pagina) -> None:
+    """Aparta el ratón de cualquier botón y espera a que acaben las transiciones: así los colores ya son los finales."""
+    pagina.mouse.move(2, 2)
+    pagina.wait_for_function("() => document.getAnimations().length === 0")
+
+
+def _sin_desbordar(pagina) -> None:
+    """Nada se sale de la pantalla a lo ancho: ni la página se puede desplazar hacia los lados ni hay algo cortado."""
+    ancho_pagina, ancho_ventana = pagina.evaluate("() => [document.documentElement.scrollWidth, window.innerWidth]")
+    assert ancho_pagina <= ancho_ventana, f"la página mide {ancho_pagina} px de ancho en una pantalla de {ancho_ventana}"
+    fuera = pagina.evaluate(
+        """() => [...document.querySelectorAll('body *')]
+            .filter(e => e.offsetParent !== null && !e.closest('.solo-lectores') && !e.closest('.comparador'))
+            .filter(e => { const c = e.getBoundingClientRect(); return c.width > 0 && (c.right > window.innerWidth + 0.5 || c.left < -0.5); })
+            .map(e => `${e.tagName.toLowerCase()}#${e.id}.${e.className}`).slice(0, 5)"""
+    )
+    assert fuera == [], fuera
+
+
+def test_5_el_diseno_de_ismagit_en_todas_las_pantallas_y_en_los_mensajes(pagina, entorno):
+    """Versión 1.1: el diseño de Ismagit tal como lo pinta el navegador, en Fotos, Resultados, Ajustes y los mensajes.
+
+    No gasta ni llama a OpenRouter (simulado): solo mira, y provoca mensajes que no cuestan nada.
+    """
+    from playwright.sync_api import expect
+
+    simulador = entorno.simulador
+    llamadas = len(simulador.peticiones)
+    ruta_gastos = entorno.datos / "estudio-fotos" / "gastos.jsonl"
+    gastos = ruta_gastos.read_text(encoding="utf-8")
+    zona = lambda nombre: pagina.click(f".zona-boton[data-zona='{nombre}']")
+
+    # --- Las fuentes: Geist y Geist Mono, cargadas desde este computador y de ningún otro sitio ---
+    assert pagina.evaluate("() => document.fonts.ready.then(() => true)")
+    cargadas = set(pagina.evaluate("() => [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family.replaceAll('\"', ''))"))
+    assert cargadas == {"Geist", "Geist Mono"}, cargadas
+    assert pagina.evaluate("() => document.fonts.check('15px Geist') && document.fonts.check('13px \"Geist Mono\"')")
+    de_fuentes = [url for url in entorno.peticiones if "fuentes" in url or re.search(r"\.(woff2?|ttf|otf|eot)\b", url)]
+    assert de_fuentes and all(re.fullmatch(re.escape(entorno.url) + r"/estilo/fuentes/geist-[a-z-]+\.woff2", url) for url in de_fuentes), de_fuentes
+    assert {url.rsplit("/", 1)[1] for url in de_fuentes} >= {"geist-latin.woff2", "geist-mono-latin.woff2"}
+
+    # --- Zona Fotos: colores, radios y bordes ya calculados ---
+    zona("fotos")
+    _quieto(pagina)
+    assert pagina.evaluate("() => getComputedStyle(document.documentElement).colorScheme") == "dark"
+    assert _estilo(pagina.locator("body"), "background-color", "color") == [BG, TEXTO]
+    assert _fuente(pagina.locator("body")) == "Geist" and _fuente(pagina.locator("h1")) == "Geist"
+    tarjeta = pagina.locator("#zona-fotos .tarjeta").first
+    assert _estilo(tarjeta, "background-color", "border-top-color", "border-top-width", "border-top-left-radius", "box-shadow") == [
+        CARD, LINEA, "1px", "12px", "none"]
+    assert _estilo(pagina.locator(".zona-boton[aria-current='page']"), "color") == [ACENTO]  # lo activo
+    assert _estilo(pagina.locator(".zona-boton[data-zona='ajustes']"), "color") == [GRIS]
+    assert _estilo(pagina.locator("#generar-medidas"), "background-color", "color", "border-top-left-radius") == [ACENTO, ACENTO_OSCURO, "999px"]
+    assert _estilo(pagina.locator("#ver-costo"), "background-color", "color", "border-top-color", "border-top-left-radius") == [
+        NADA, TEXTO, LINEA, "999px"]
+    for campo in ("#escena", "#formato-escena"):
+        assert _estilo(pagina.locator(campo), "background-color", "color", "border-top-color") == [CARD2, TEXTO, LINEA], campo
+        assert _fuente(pagina.locator(campo)) == "Geist"
+    assert _fuente(pagina.locator("#generar-medidas")) == "Geist"
+    assert _estilo(pagina.locator("#zona-fotos .ayuda").first, "color") == [GRIS]
+    assert _rellenos_de_acento(pagina) == ["Generar medidas"]  # un solo botón principal en la zona
+
+    # Vacío: la zona para soltar. Trabajando y terminado: la barra, en el acento.
+    soltar = pagina.locator("#soltar")
+    expect(soltar.locator("strong")).to_have_text("Arrastra aquí tus fotos")
+    assert _estilo(soltar, "border-top-style", "background-color", "border-top-left-radius") == ["dashed", CARD2, "12px"]
+    assert _estilo(pagina.locator("#barra-recorte"), "background-color") == [ACENTO]
+    expect(pagina.locator("#texto-recorte")).to_contain_text("listo")
+    # Cifras, medidas y nombres de archivo: Geist Mono.
+    for cifra in ("#texto-recorte", "#lista-fotos .foto-nombre", "#lista-fotos .foto-estado", ".plataforma-medida", "#resumen-medidas",
+                  "#resumen-escenas", "#texto-color-escena"):
+        assert _fuente(pagina.locator(cifra).first) == "Geist Mono", cifra
+
+    # Las fotos, sobre su fondo real: el recorte se ve sobre cuadros claros (no sobre la tarjeta oscura).
+    cuadros = _estilo(pagina.locator("#lista-fotos .comparador").first, "background-image")[0]
+    assert cuadros.startswith("conic-gradient(") and "rgb(213, 218, 225)" in cuadros and BLANCO in cuadros
+    # Aviso: una foto de menos de 1.000 px de lado corto.
+    aviso = pagina.locator("#lista-fotos .foto .nota-aviso:visible").first
+    expect(aviso).to_contain_text("px de lado corto")
+    assert _estilo(aviso, "color", "background-color") == [AVISO, CARD2]
+    # Las casillas marcadas, en el acento.
+    assert _estilo(pagina.locator("#lista-fotos .foto-usar input").first, "accent-color") == [ACENTO]
+
+    # Error: un archivo que no es una foto.
+    pagina.set_input_files("#elegir-fotos", {"name": "apuntes.txt", "mimeType": "text/plain", "buffer": b"esto no es una foto"})
+    error = pagina.locator("#avisos-subida .nota-error")
+    expect(error).to_have_count(1)
+    expect(error).to_contain_text("apuntes.txt")
+    assert _estilo(error, "color", "background-color") == [ERROR, CARD2]
+    expect(pagina.locator("#lista-fotos .foto")).to_have_count(TOTAL)  # y no se añadió a las fotos
+
+    # Error del tope de gasto (quedan 0,05 $ de la sesión del recorrido 4): no se gasta y se dice en rojo.
+    pagina.click("#ver-costo")
+    tope = pagina.locator("#error-escenas")
+    expect(tope).to_contain_text("Sube el tope en Ajustes o genera menos escenas.")
+    assert _estilo(tope, "color", "background-color") == [ERROR, CARD2]
+    _quieto(pagina)
+    _captura(pagina, "5-fotos-mensajes")
+
+    # Terminado («listo»): se generan otra vez las medidas, que no cuestan nada.
+    pagina.click("#generar-medidas")
+    listo = pagina.locator("#medidas-listas")
+    expect(listo).to_be_visible(timeout=120_000)
+    expect(pagina.locator("#texto-medidas")).to_contain_text("listo")
+    expect(pagina.locator("#texto-medidas-listas")).to_contain_text("Listo: ")
+    _quieto(pagina)
+    assert _estilo(listo, "color", "background-color") == [ACENTO, CARD2]
+    assert _estilo(pagina.locator("#barra-medidas"), "background-color") == [ACENTO]
+    assert _estilo(pagina.locator("#ver-resultados"), "background-color") == [NADA]  # secundario
+
+    # --- El foco del teclado se ve: un contorno de 2 px en el acento ---
+    contorno = lambda elemento: _estilo(elemento, "outline-style", "outline-width", "outline-color")
+    pagina.locator("#ver-costo").focus()
+    pagina.keyboard.press("Shift+Tab")  # con el teclado, al campo anterior
+    activo = pagina.evaluate("() => document.activeElement.id")
+    assert activo in ("color-escena", "formato-escena", "escena-propia", "escena"), activo
+    assert contorno(pagina.locator(f"#{activo}")) == ["solid", "2px", ACENTO]
+    pagina.keyboard.press("Tab")
+    assert pagina.evaluate("() => document.activeElement.id") == "ver-costo"
+    assert contorno(pagina.locator("#ver-costo")) == ["solid", "2px", ACENTO]
+    pagina.locator("#elegir-fotos").focus()  # el control de subir es invisible: el foco se enseña en su caja
+    assert contorno(soltar) == ["solid", "2px", ACENTO]
+    pagina.locator("#lista-fotos .deslizador").first.focus()  # igual que el deslizador del antes y el después
+    assert contorno(pagina.locator("#lista-fotos .comparador").first) == ["solid", "2px", ACENTO]
+
+    # --- Zona Ajustes: los campos, lo guardado y un error ---
+    zona("ajustes")
+    _quieto(pagina)
+    assert _rellenos_de_acento(pagina) == ["Guardar ajustes"]
+    assert _estilo(pagina.locator("#guardar-clave"), "background-color", "border-top-color") == [NADA, LINEA]
+    for campo in ("#clave", "#modelo-escenas", "#tope-sesion"):
+        assert _estilo(pagina.locator(campo), "background-color", "color") == [CARD2, TEXTO], campo
+    for cifra in ("#mascara-clave", "#gasto-sesion", "#tope-sesion", "#clave"):
+        assert _fuente(pagina.locator(cifra)) == "Geist Mono", cifra
+    assert _estilo(pagina.locator(".opcion:has(input:checked)"), "border-top-color", "background-color") == [ACENTO, CARD2]
+    pagina.fill("#tope-sesion", "")
+    pagina.click("#guardar-ajustes")
+    error_ajustes = pagina.locator("#error-ajustes")
+    expect(error_ajustes).to_have_text("El tope de gasto debe ser un número, por ejemplo 1.")
+    assert _estilo(error_ajustes, "color", "background-color") == [ERROR, CARD2]
+    _captura(pagina, "5-ajustes-error")
+    pagina.fill("#tope-sesion", "1")
+    pagina.click("#guardar-ajustes")
+    guardados = pagina.locator("#ajustes-guardados")
+    expect(guardados).to_be_visible()
+    expect(error_ajustes).to_be_hidden()
+    assert _estilo(guardados, "color", "background-color") == [ACENTO, CARD2]
+    pagina.locator("#tope-sesion").focus()
+    assert contorno(pagina.locator("#tope-sesion")) == ["solid", "2px", ACENTO]
+    _quieto(pagina)
+    _captura(pagina, "5-ajustes")
+
+    # --- La confirmación antes de gastar: el costo a la vista, y «Sí, generar» no es un segundo botón principal ---
+    zona("fotos")
+    pagina.click("#ver-costo")
+    confirmar = pagina.locator("#confirmar-escenas")
+    expect(confirmar).to_be_visible()
+    expect(pagina.locator("#texto-estimacion")).to_have_text("2 escenas · costo estimado 0,10 $ · ¿Generar?")
+    _quieto(pagina)
+    pagina.locator("#generar-escenas").blur()
+    _quieto(pagina)
+    assert _estilo(confirmar, "border-top-color", "background-color") == [ACENTO, CARD2]
+    assert _estilo(pagina.locator("#texto-estimacion"), "color") == [TEXTO] and _fuente(pagina.locator("#texto-estimacion")) == "Geist Mono"
+    for boton in ("#generar-escenas", "#cancelar-escenas"):
+        assert _estilo(pagina.locator(boton), "background-color", "color", "border-top-color") == [NADA, TEXTO, LINEA], boton
+    assert _rellenos_de_acento(pagina) == ["Generar medidas"]
+    _captura(pagina, "5-fotos-confirmar")
+
+    # --- Pantalla estrecha (360 px): nada se rompe ni se sale a lo ancho, tampoco con los mensajes a la vista ---
+    pagina.set_viewport_size({"width": 360, "height": 780})
+    try:
+        _sin_desbordar(pagina)
+        expect(pagina.locator("header .cabecera-logo")).to_be_visible()
+        expect(pagina.locator("h1")).to_be_visible()
+        expect(confirmar).to_be_visible()
+        _captura(pagina, "5-estrecha-fotos")
+        pagina.click("#cancelar-escenas")  # «No, cancelar»: no se gasta
+        expect(confirmar).to_be_hidden()
+        for nombre in ("resultados", "ajustes"):
+            zona(nombre)
+            expect(pagina.locator(f"#zona-{nombre}")).to_be_visible()
+            _sin_desbordar(pagina)
+            _captura(pagina, f"5-estrecha-{nombre}")
+        assert round(pagina.locator("header .cabecera-logo").bounding_box()["height"]) == 28
+    finally:
+        pagina.set_viewport_size({"width": 1280, "height": 900})
+
+    # --- Zona Resultados: un solo principal, y cada foto sobre su fondo real dentro de su tarjeta oscura ---
+    zona("resultados")
+    _quieto(pagina)
+    expect(pagina.locator("#lista-resultados .resultado-foto")).to_have_count(TOTAL)
+    assert _rellenos_de_acento(pagina) == ["Descargar todo (ZIP)"]
+    assert _estilo(pagina.get_by_role("link", name="Solo los recortes"), "background-color", "border-top-color") == [NADA, LINEA]
+    bloque = pagina.locator("#lista-resultados .resultado-foto").first
+    assert _estilo(bloque, "background-color", "border-top-left-radius") == [CARD, "12px"]
+    assert _fuente(bloque.locator("h3")) == "Geist Mono"  # el nombre del archivo
+    vistos = set()
+    for resultado in bloque.locator(".resultado").all():
+        titulo = resultado.locator(".resultado-titulo").inner_text()
+        imagen, color = _estilo(resultado.locator(".resultado-imagen"), "background-image", "background-color")
+        if titulo == "Recorte":
+            assert imagen.startswith("conic-gradient(") and "rgb(213, 218, 225)" in imagen, titulo  # cuadros claros
+            vistos.add("recorte")
+        elif titulo.startswith("Escena: "):
+            assert (imagen, color) == ("none", CARD2), titulo
+            vistos.add("escena")
+        else:
+            assert (imagen, color) == ("none", BLANCO), titulo  # las fotos con fondo blanco, sobre blanco
+            vistos.add("blanco")
+        for cifra in (".resultado-archivo", ".resultado-datos"):
+            assert _fuente(resultado.locator(cifra)) == "Geist Mono" and _estilo(resultado.locator(cifra), "color") == [GRIS]
+    assert vistos == {"recorte", "escena", "blanco"}
+    aviso_resultado = pagina.locator("#lista-resultados .nota-aviso").first  # «ampliada ×…»
+    assert _estilo(aviso_resultado, "color", "background-color") == [AVISO, CARD2]
+    _captura(pagina, "5-resultados")
+
+    # La firma, en el pie, con el logo pequeño.
+    firma = pagina.locator("footer.firma")
+    expect(firma.locator("a")).to_have_attribute("href", ENLACE_FIRMA)
+    assert round(firma.locator("img").bounding_box()["height"]) == 18 and _estilo(firma.locator("a"), "color") == [GRIS]
+
+    # Nada de esto gastó ni llamó a OpenRouter.
+    assert len(simulador.peticiones) == llamadas and ruta_gastos.read_text(encoding="utf-8") == gastos
+    zona("fotos")
+
+
+def test_6_la_pagina_no_cargo_nada_de_internet_ni_dio_errores(pagina, entorno):
     """En todos los recorridos, cada petición del navegador fue a este computador, y la consola quedó limpia."""
     assert len(entorno.peticiones) > 50
     fuera = [url for url in entorno.peticiones if not url.startswith(entorno.url + "/")]

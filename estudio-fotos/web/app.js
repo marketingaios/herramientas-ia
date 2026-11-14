@@ -598,9 +598,11 @@
 
   let resultadosPintados = "";
 
-  function crearResultado({ titulo, archivo, datos, url, avisos, cuadros, marca }) {
+  /** `fondo` es el fondo real sobre el que se juzga cada foto: «cuadros» (el recorte, que es transparente), «blanco»
+      (las fotos con fondo blanco) o ninguno (las escenas, que traen su propio fondo). */
+  function crearResultado({ titulo, archivo, datos, url, avisos, fondo, marca }) {
     const elemento = crear("li", "resultado");
-    const marco = crear("a", cuadros ? "resultado-imagen cuadros" : "resultado-imagen");
+    const marco = crear("a", fondo ? `resultado-imagen ${fondo}` : "resultado-imagen");
     marco.href = url;
     marco.target = "_blank";
     marco.rel = "noopener";
@@ -652,7 +654,7 @@
         datos: `PNG con transparencia · ${foto.recorte.medida} · ${foto.recorte.peso_texto}`,
         url: foto.recorte.url,
         avisos: [],
-        cuadros: true,
+        fondo: "cuadros",
       }));
       for (const salida of foto.salidas) {
         lista.append(crearResultado({
@@ -661,6 +663,7 @@
           datos: `${salida.medida} · ${salida.peso_texto} · producto al ${salida.porcentaje} %`,
           url: salida.url,
           avisos: salida.avisos,
+          fondo: "blanco",
         }));
       }
       for (const escena of foto.escenas || []) {

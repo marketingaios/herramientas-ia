@@ -326,6 +326,23 @@ def test_un_solo_boton_principal_por_zona():
     assert _lee(INICIO / "index.html").count("boton-principal") == 1
 
 
+def test_cada_foto_se_juzga_sobre_su_fondo_real():
+    """Los recortes, sobre cuadros claros; las fotos con fondo blanco, sobre blanco; las escenas, sobre el fondo de los
+    campos. Siempre dentro de su tarjeta oscura."""
+    app, js = _lee(WEB / "app.css"), _lee(WEB / "app.js")
+    assert _regla(app, ".comparador")["background"] == CUADROS  # el antes y el después de cada recorte
+    assert _regla(app, ".resultado-imagen.cuadros")["background"] == CUADROS
+    assert _regla(app, ".resultado-imagen.blanco")["background"] == "#ffffff"
+    assert _regla(app, ".resultado-imagen")["background"] == "var(--card2)"
+    for color in re.findall(r"#[0-9a-f]{6}", CUADROS):  # cuadros claros de verdad: se distinguen del blanco y no oscurecen
+        assert _luminancia(color) > 0.65, color
+    assert js.count('fondo: "cuadros"') == 1 and js.count('fondo: "blanco"') == 1
+    recorte, salida, escena = (js.index(marca) for marca in ('titulo: "Recorte"', "titulo: salida.nombre_plataforma", "titulo: `Escena: "))
+    assert recorte < js.index('fondo: "cuadros"') < salida < js.index('fondo: "blanco"') < escena
+    assert "fondo:" not in js[escena : js.index("bloque.append(lista)")]  # la escena trae su propio fondo
+    assert 'crear("div", "tarjeta resultado-foto")' in js  # cada foto, en su tarjeta oscura
+
+
 # --- La firma ---------------------------------------------------------------------------------------------------------
 
 

@@ -145,7 +145,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       zonas, un solo botón principal por zona, Geist Mono en cifras, medidas y nombres de archivo, tarjetas y campos.
       Prueba: `test_diseno.py` (el logo y el nombre; un solo principal por zona en el HTML; Geist Mono donde toca) y
       `test_pagina.py`.
-- [ ] **Paso 30 · Diseño (3) · fotos, mensajes y pantalla estrecha**: el fondo real de cada foto (cuadros claros,
+- [x] **Paso 30 · Diseño (3) · fotos, mensajes y pantalla estrecha**: el fondo real de cada foto (cuadros claros,
       blanco, `--card2`), los avisos y errores, 360 px de ancho; se revisan Fotos, Resultados, Ajustes y los mensajes
       con capturas.
       Prueba: `test_diseno.py` (el fondo de cada foto) y el recorrido de diseño de `test_e2e.py`, antes del último:
