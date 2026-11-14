@@ -133,7 +133,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       segunda arrancada no cambia nada; un `ajustes.json` roto no se toca y no impide arrancar; si el logo no se
       puede borrar, arranca igual; nada sale por la consola) y `test_config.py` (en pruebas, esa ruta está en la
       carpeta temporal).
-- [ ] **Paso 28 · Diseño (1) · variables, fuentes, firma e inicio**: `estilo/estilo.css` con las 11 variables, las
+- [x] **Paso 28 · Diseño (1) · variables, fuentes, firma e inicio**: `estilo/estilo.css` con las 11 variables, las
       fuentes Geist locales (`estilo/fuentes/`, con su licencia) y los estilos comunes (botones, tarjetas, campos,
       foco, avisos, barra, firma); `app.css` pasa a las variables nuevas; la firma y la página de inicio, con el logo
       de la guía 1.1, que entra en git con `marca/fuentes/`.

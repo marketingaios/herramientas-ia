@@ -30,7 +30,11 @@ def _texto(ruta) -> str:
         "estilo/estilo.css",
         "estilo/firma.html",
         "inicio/index.html",
-        "marca/ismagit_negro.png",
+        "marca/ismagit_logo.png",
+        "marca/fuentes/OFL.txt",
+        "estilo/fuentes/geist-latin.woff2",
+        "estilo/fuentes/geist-mono-latin.woff2",
+        "estilo/fuentes/OFL.txt",
         "estudio-fotos/FICHA.md",
         "estudio-fotos/PLAN.md",
         "estudio-fotos/TAREAS.md",
@@ -111,7 +115,7 @@ def test_la_firma_esta_en_la_pagina_de_inicio():
         texto = _texto(pagina)
         assert ENLACE_FIRMA in texto
         assert "Hecho con la guía de Ismagit" in texto
-        assert "marca/ismagit_negro.png" in texto
+        assert "marca/ismagit_logo.png" in texto
 
 
 def test_la_pagina_de_inicio_lista_la_herramienta():

@@ -38,27 +38,37 @@ def test_la_firma_de_ismagit_esta_en_el_pie_tal_como_en_estilo_firma():
     assert compacta(firma) in compacta(html)
     assert html.count("<footer") == 1 and compacta(html).endswith("</footer> </body> </html>")
     assert "Hecho con la guía de Ismagit" in firma and f'href="{ENLACE_FIRMA}"' in firma
-    assert 'src="/marca/ismagit_negro.png"' in firma
-    assert (RAIZ / "marca" / "ismagit_negro.png").is_file()
+    assert 'src="/marca/ismagit_logo.png"' in firma
+    assert (RAIZ / "marca" / "ismagit_logo.png").is_file()
 
 
 def test_la_pagina_no_carga_nada_de_internet():
-    """Ni fuentes, ni librerías, ni iconos: la única dirección de internet es el enlace de la firma."""
+    """Ni fuentes, ni librerías, ni iconos de fuera: la única dirección de internet es el enlace de la firma.
+
+    Las fuentes son archivos de `estilo/fuentes/` (la lista blanca está en `test_diseno.py`).
+    """
+    comun = RAIZ / "estilo" / "estilo.css"
     archivos = sorted(p for p in WEB.rglob("*") if p.is_file())
     assert {p.name for p in archivos} >= {"index.html", "app.css", "app.js"}
-    for archivo in archivos + [RAIZ / "estilo" / "estilo.css"]:
+    for archivo in archivos + [comun]:
         assert archivo.suffix in {".html", ".css", ".js"}, f"archivo inesperado en la página: {archivo.name}"
         texto = archivo.read_text(encoding="utf-8")
         direcciones = re.findall(r"(?:https?:)?//[A-Za-z0-9][^\s\"'<>)]*", re.sub(r"\s//\s.*", "", texto))
         direcciones = [d for d in direcciones if not d.startswith("//")] + [d for d in direcciones if d.startswith("//") and "." in d.split("/")[2]]
         assert set(direcciones) <= {ENLACE_FIRMA}, f"{archivo.name} nombra {direcciones}"
-        assert "@import" not in texto and "@font-face" not in texto
+        assert "@import" not in texto
+        if archivo != comun:  # las fuentes solo se declaran en la hoja común
+            assert "@font-face" not in texto and "url(" not in texto, archivo.name
 
     html = _sin_comentarios(_lee("index.html"))
     cargas = re.findall(r'(?:src|href)="([^"]+)"', html)
     assert all(c.startswith(("/web/", "/estilo/", "/marca/")) or c == ENLACE_FIRMA for c in cargas), cargas
-    for css in (_lee("app.css"), (RAIZ / "estilo" / "estilo.css").read_text(encoding="utf-8")):
-        assert "url(" not in css  # ni imágenes ni fuentes de fuera
+    # Lo único que carga la hoja común son las cuatro fuentes Geist de su carpeta: archivos que existen, sin dirección.
+    cargas_css = re.findall(r"url\(([^)]*)\)", comun.read_text(encoding="utf-8"))
+    assert len(cargas_css) == 4
+    for carga in cargas_css:
+        assert re.fullmatch(r'"fuentes/[a-z-]+\.woff2"', carga), carga
+        assert (comun.parent / carga.strip('"')).is_file()
 
 
 def test_la_pagina_de_inicio_tampoco_carga_nada_de_internet():
@@ -70,6 +80,7 @@ def test_la_pagina_de_inicio_tampoco_carga_nada_de_internet():
         assert archivo.suffix in {".html", ".css"}, f"archivo inesperado en inicio/: {archivo.name}"
         texto = archivo.read_text(encoding="utf-8")
         assert "@import" not in texto and "@font-face" not in texto and "url(" not in texto, archivo.name
+        assert "fonts.g" not in texto.lower()  # las fuentes llegan de ../estilo/estilo.css, que las tiene en su carpeta
 
     html = _sin_comentarios((inicio / "index.html").read_text(encoding="utf-8"))
     assert "<script" not in html and "<style" not in html and " style=" not in html and "<iframe" not in html
@@ -125,7 +136,7 @@ def test_el_servidor_sirve_la_pagina_y_sus_archivos(servidor):
     assert "Estudio de fotos de producto" in pagina.text and "Hecho con la guía de Ismagit" in pagina.text
     assert pagina.headers["cache-control"] == "no-store" and "default-src 'self'" in pagina.headers["content-security-policy"]
     assert pagina.headers["referrer-policy"] == "no-referrer"  # el enlace de la firma no lleva la dirección local
-    for ruta, tipo in (("/web/app.js", "javascript"), ("/web/app.css", "text/css"), ("/estilo/estilo.css", "text/css"), ("/marca/ismagit_negro.png", "image/png")):
+    for ruta, tipo in (("/web/app.js", "javascript"), ("/web/app.css", "text/css"), ("/estilo/estilo.css", "text/css"), ("/marca/ismagit_logo.png", "image/png")):
         respuesta = servidor.cliente.get(ruta)
         assert respuesta.status_code == 200 and tipo in respuesta.headers["content-type"], ruta
     for carga in re.findall(r'(?:src|href)="(/[^"]+)"', pagina.text):

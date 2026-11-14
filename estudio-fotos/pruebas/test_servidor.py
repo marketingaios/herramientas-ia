@@ -11,7 +11,7 @@ import pytest
 from PIL import Image
 
 import ayudas
-from conftest import fotos_de_muestra, lado_corto
+from conftest import RAIZ, fotos_de_muestra, lado_corto
 
 CABECERAS_JSON = {"Content-Type": "application/json"}
 
@@ -92,8 +92,17 @@ def test_un_metodo_que_no_toca_se_dice_en_espanol(servidor, metodo, ruta):
 def test_los_archivos_de_la_pagina_son_locales(servidor):
     css = servidor.cliente.get("/estilo/estilo.css")
     assert css.status_code == 200 and css.headers["content-type"].startswith("text/css")
-    logo = servidor.cliente.get("/marca/ismagit_negro.png")
+    logo = servidor.cliente.get("/marca/ismagit_logo.png")
     assert logo.status_code == 200 and logo.content[:8] == b"\x89PNG\r\n\x1a\n"
+    # Las fuentes Geist las sirve este mismo servidor, desde estilo/fuentes/: la política solo deja cargar las propias.
+    for nombre in ("geist-latin.woff2", "geist-latin-ext.woff2", "geist-mono-latin.woff2", "geist-mono-latin-ext.woff2"):
+        fuente = servidor.cliente.get(f"/estilo/fuentes/{nombre}")
+        assert fuente.status_code == 200 and fuente.content[:4] == b"wOF2", nombre
+        assert fuente.headers["content-type"] == "font/woff2" and fuente.headers["x-content-type-options"] == "nosniff"
+        assert fuente.content == (RAIZ / "estilo" / "fuentes" / nombre).read_bytes()
+    assert "font-src 'self'" in css.headers["content-security-policy"]
+    for nombre in ("geist-latin.woff2", "geist-mono-latin.woff2"):
+        assert f'url("fuentes/{nombre}")' in css.text
 
 
 @pytest.mark.parametrize(

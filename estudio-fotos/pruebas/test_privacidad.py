@@ -137,7 +137,8 @@ def test_la_clave_no_aparece_en_ningun_sitio(servidor, simulador, clave_falsa, r
     pedir("GET", f"/api/fotos/{foto['id']}/recorte")
     assert pedir("GET", "/api/descargar").status_code == 200
     assert pedir("GET", "/api/descargar", params={"plataforma": "escenas"}).status_code == 200
-    for ruta in ("/", "/estilo/estilo.css", "/estilo/firma.html", "/web/app.js", "/web/app.css", "/marca/ismagit_negro.png"):
+    for ruta in ("/", "/estilo/estilo.css", "/estilo/firma.html", "/web/app.js", "/web/app.css", "/marca/ismagit_logo.png",
+                 "/estilo/fuentes/geist-latin.woff2", "/estilo/fuentes/OFL.txt"):
         pedir("GET", ruta)
     for metodo, ruta in (("DELETE", "/api/ajustes/clave"), ("PUT", "/api/ajustes/clave")):
         pedir(metodo, ruta, json={"clave": clave_falsa})  # borrar y volver a guardar
