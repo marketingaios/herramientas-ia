@@ -11,7 +11,7 @@ import pytest
 from PIL import Image
 
 import ayudas
-from conftest import MUESTRAS, RAIZ
+from conftest import RAIZ, fotos_de_muestra, lado_corto
 
 CABECERAS_JSON = {"Content-Type": "application/json"}
 
@@ -502,12 +502,14 @@ def test_un_error_interno_no_cuenta_nada_del_computador(servidor, monkeypatch, c
     assert servidor.cliente.get("/api/estado").status_code == 200  # y sigue funcionando
 
 
-def test_las_muestras_de_cafe_2600_se_pueden_subir(servidor):
-    """Las 5 fotos de `muestras/` pasan por el servidor (con el recorte simulado)."""
-    archivos = [(ruta.name, ruta.read_bytes()) for ruta in sorted(MUESTRAS.glob("*.jpg"))]
-    assert len(archivos) == 5
-    fotos = _subir(servidor, archivos).json()["fotos"]
+def test_todas_las_muestras_se_pueden_subir(servidor):
+    """Todas las fotos de `muestras/`, las que haya, pasan por el servidor (con el recorte simulado)."""
+    muestras = fotos_de_muestra()
+    total = len(muestras)
+    fotos = _subir(servidor, [(ruta.name, ruta.read_bytes()) for ruta in muestras]).json()["fotos"]
+    assert [f["archivo"] for f in fotos] == [ruta.name for ruta in muestras]
     assert all(f["aceptada"] for f in fotos)
-    assert sum(1 for f in fotos if f["aviso"]) == 2  # las dos de 896 px llevan el aviso de menos de 1.000 px
+    # Las que miden menos de 1.000 px de lado corto llevan su aviso; las demás, no.
+    assert [bool(f["aviso"]) for f in fotos] == [lado_corto(ruta) < 1000 for ruta in muestras]
     servidor.esperar("recorte")
-    assert servidor.cliente.get("/api/estado").json()["trabajos"]["recorte"]["texto"].startswith("5 de 5 · listo")
+    assert servidor.cliente.get("/api/estado").json()["trabajos"]["recorte"]["texto"].startswith(f"{total} de {total} · listo")

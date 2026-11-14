@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from conftest import MUESTRAS, RAIZ
+from conftest import RAIZ, fotos_de_muestra
 from estudio import equipo, prueba_aceleracion, recorte
 from estudio.config import Config, para_pruebas
 from estudio.equipo import PROCESADOR, PROVEEDORES_COREML, Aceleracion
@@ -644,7 +644,7 @@ def test_medicion_real_despues_del_primer_lote(tmp_path, tmp_path_factory):
         pytest.skip("este computador no tiene un acelerador que probar")
     config = para_pruebas(tmp_path, recortador="rembg")
     estudio = Estudio(config, aceleracion=aceleracion)
-    muestras = sorted(MUESTRAS.glob("*.jpg"))
+    muestras = fotos_de_muestra()  # hacen falta 3: dos para el primer lote y una para el siguiente
     try:
         estudio.cambiar_calidad("maxima")
         subir(estudio, tmp_path, muestras[0].name, muestras[0].read_bytes())

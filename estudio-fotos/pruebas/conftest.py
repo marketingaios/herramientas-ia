@@ -20,6 +20,7 @@ import pytest
 CARPETA = Path(__file__).resolve().parent.parent  # estudio-fotos
 RAIZ = CARPETA.parent  # herramientas-ia
 MUESTRAS = RAIZ / "muestras"
+EXTENSIONES_DE_FOTO = {".jpg", ".jpeg", ".png", ".webp"}
 
 # Un puerto local donde no escucha nadie: si una prueba rápida intentara hablar con «OpenRouter», fallaría la conexión.
 SIN_SERVIDOR = "http://127.0.0.1:9/api/v1"
@@ -35,6 +36,22 @@ def pytest_configure(config):
     os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(CARPETA / ".navegadores"))
     for variable in _VARIABLES:
         os.environ.pop(variable, None)
+
+
+def fotos_de_muestra() -> list[Path]:
+    """Todas las fotos de `muestras/`, ordenadas por nombre: las pruebas usan las que haya, sin un número fijo."""
+    fotos = sorted(ruta for ruta in MUESTRAS.iterdir() if ruta.is_file() and ruta.suffix.lower() in EXTENSIONES_DE_FOTO)
+    assert len(fotos) >= 3, "en muestras/ hacen falta al menos 3 fotos para los recorridos de las pruebas"
+    assert len(fotos) <= 20, "en muestras/ hay más de 20 fotos: no caben en una sola subida"
+    return fotos
+
+
+def lado_corto(foto: Path) -> int:
+    """El lado corto de una foto de muestra, en píxeles (por debajo de 1.000, la herramienta la acepta con un aviso)."""
+    from PIL import Image
+
+    with Image.open(foto) as imagen:
+        return min(imagen.size)
 
 
 def _huella_de_los_archivos_reales() -> dict:

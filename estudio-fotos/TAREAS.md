@@ -103,7 +103,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
 
 ## Construcción
 
-- [ ] **Paso 24 · Muestras**: una función de `conftest.py` da todas las fotos de `muestras/` y la usan todas las
+- [x] **Paso 24 · Muestras**: una función de `conftest.py` da todas las fotos de `muestras/` y la usan todas las
       pruebas, sin un número fijo; entran en git las 4 fotos nuevas de la guía y salen, por su nombre exacto, las 3 de
       la versión 1.
       Prueba: `test_servidor.py` (todas las muestras pasan por el servidor; el aviso de menos de 1.000 px, contado con

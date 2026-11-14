@@ -1,6 +1,6 @@
 """Paso 5, con el modelo real (aparte: `pytest -m modelo`; la primera vez descarga el modelo).
 
-Recorta las 5 fotos de `muestras/`, comprueba que cada recorte tiene un producto (la máscara ocupa entre el 5 % y el
+Recorta todas las fotos de `muestras/`, comprueba que cada recorte tiene un producto (la máscara ocupa entre el 5 % y el
 95 % de la foto) y anota el tiempo por foto.
 """
 
@@ -13,14 +13,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from conftest import MUESTRAS, RAIZ
+from conftest import RAIZ, fotos_de_muestra
 from estudio.recorte import RecortadorRembg, recortar, ruta_modelo
 from estudio.subidas import abrir_normalizada
 
 pytestmark = pytest.mark.modelo
 
 MODELO = "birefnet-general"
-FOTOS = sorted(MUESTRAS.glob("*.jpg"))
+FOTOS = fotos_de_muestra()  # las que haya en la carpeta, sin un número fijo
 
 
 def _carpetas_personales() -> dict:
@@ -68,8 +68,8 @@ def recortes(tmp_path_factory):
     return {"resultados": resultados, "recortador": recortador, "antes": antes}
 
 
-def test_hay_cinco_muestras():
-    assert len(FOTOS) == 5
+def test_se_recortan_todas_las_fotos_de_muestras(recortes):
+    assert sorted(recortes["resultados"]) == sorted(foto.name for foto in fotos_de_muestra())
 
 
 @pytest.mark.parametrize("foto", [f.name for f in FOTOS])

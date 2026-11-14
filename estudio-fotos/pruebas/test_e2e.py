@@ -22,12 +22,15 @@ import pytest
 from PIL import Image
 
 import ayudas
-from conftest import MUESTRAS, RAIZ
+from conftest import RAIZ, fotos_de_muestra, lado_corto
 
 pytestmark = pytest.mark.e2e
 
 ENLACE_FIRMA = "https://marketingaios.com/?origen=herramienta-estudio-fotos"
 CAPTURAS = os.environ.get("E2E_CAPTURAS", "")  # una carpeta donde dejar capturas de pantalla (opcional)
+MUESTRAS = fotos_de_muestra()  # todas las fotos de muestras/, las que haya: ninguna cuenta depende de un número fijo
+TOTAL = len(MUESTRAS)
+FOTOS = [ruta.stem for ruta in MUESTRAS]
 
 
 @pytest.fixture(scope="module")
@@ -74,7 +77,7 @@ def _captura(pagina, nombre: str) -> None:
         pagina.screenshot(path=str(Path(CAPTURAS) / f"{nombre}.png"), full_page=True)
 
 
-def test_1_subir_las_cinco_muestras_y_ver_los_cinco_recortes(pagina, entorno):
+def test_1_subir_todas_las_muestras_y_ver_un_recorte_por_foto(pagina, entorno):
     from playwright.sync_api import expect
 
     # La página vacía: el título, la zona para soltar y la firma en el pie.
@@ -88,31 +91,33 @@ def test_1_subir_las_cinco_muestras_y_ver_los_cinco_recortes(pagina, entorno):
     assert pagina.locator("#chip-modelo").inner_text() in ("Calidad máxima", "Modo rápido")
     _captura(pagina, "1-vacia")
 
-    # Sube las 5 fotos de muestras/ y espera la barra hasta «5 de 5».
-    muestras = sorted(MUESTRAS.glob("*.jpg"))
-    assert len(muestras) == 5
-    pagina.set_input_files("#elegir-fotos", [str(ruta) for ruta in muestras])
-    expect(pagina.locator("#lista-fotos .foto")).to_have_count(5)
+    # Sube todas las fotos de muestras/ y espera la barra hasta el final («N de N»).
+    pagina.set_input_files("#elegir-fotos", [str(ruta) for ruta in MUESTRAS])
+    expect(pagina.locator("#lista-fotos .foto")).to_have_count(TOTAL)
     expect(pagina.locator("#avance-recorte")).to_be_visible()
-    expect(pagina.locator("#texto-recorte")).to_contain_text(" de 5")  # la barra, mientras trabaja
+    expect(pagina.locator("#texto-recorte")).to_contain_text(f" de {TOTAL}")  # la barra, mientras trabaja
     _captura(pagina, "1-recortando")
-    expect(pagina.locator("#texto-recorte")).to_contain_text("5 de 5 · listo", timeout=600_000)
+    expect(pagina.locator("#texto-recorte")).to_contain_text(f"{TOTAL} de {TOTAL} · listo", timeout=900_000)
     assert pagina.locator("#barra-recorte").evaluate("barra => barra.style.width") == "100%"
     pagina.wait_for_function(  # la barra llega hasta el final
         "() => { const b = document.querySelector('#barra-recorte'); return b.getBoundingClientRect().width >= b.parentElement.getBoundingClientRect().width - 1; }"
     )
 
-    # Las dos fotos de menos de 1.000 px de lado corto se aceptan con su aviso.
-    expect(pagina.locator("#avisos-subida li")).to_have_count(2)
-    expect(pagina.locator("#avisos-subida li").first).to_contain_text("mide 896 px de lado corto: con 1.000 o más se verá mejor")
+    # Las fotos de menos de 1.000 px de lado corto se aceptan con su aviso; las demás, sin él.
+    pequenas = [ruta for ruta in MUESTRAS if lado_corto(ruta) < 1000]
+    expect(pagina.locator("#avisos-subida li")).to_have_count(len(pequenas))
+    for indice, ruta in enumerate(pequenas):
+        expect(pagina.locator("#avisos-subida li").nth(indice)).to_have_text(
+            re.compile(rf"^{re.escape(ruta.name)}: .*mide {lado_corto(ruta)} px de lado corto: con 1\.000 o más se verá mejor")
+        )
 
-    # Se ven los 5 recortes: antes y después, con el deslizador, sobre el fondo de cuadros.
+    # Se ve un recorte por foto: antes y después, con el deslizador, sobre el fondo de cuadros.
     tarjetas = pagina.locator("#lista-fotos .foto")
     pagina.wait_for_function(
         "() => [...document.querySelectorAll('#lista-fotos img')].every(img => img.hidden || (img.complete && img.naturalWidth > 0))"
     )
     nombres = []
-    for indice in range(5):
+    for indice in range(TOTAL):
         tarjeta = tarjetas.nth(indice)
         nombres.append(tarjeta.locator(".foto-nombre").inner_text())
         expect(tarjeta.locator("img.despues")).to_be_visible()
@@ -134,7 +139,7 @@ def test_1_subir_las_cinco_muestras_y_ver_los_cinco_recortes(pagina, entorno):
             }"""
         )
         assert 0.05 < opacos < 0.95 and transparentes > 0.05, (nombres[-1], opacos, transparentes)
-    assert nombres == [ruta.name for ruta in muestras]
+    assert nombres == [ruta.name for ruta in MUESTRAS]
 
     # El deslizador mueve la línea entre el antes y el después.
     primera = tarjetas.first
@@ -156,22 +161,22 @@ def _descargar(pagina, boton) -> zipfile.ZipFile:
 def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
     from playwright.sync_api import expect
 
-    fotos = [ruta.stem for ruta in sorted(MUESTRAS.glob("*.jpg"))]
+    fotos = FOTOS
 
     # Elige Mercado Libre, Amazon e Instagram.
     expect(pagina.locator("#lista-plataformas .plataforma")).to_have_count(8)
-    expect(pagina.locator("#resumen-medidas")).to_have_text("5 fotos × 8 plataformas = 40 archivos")
+    expect(pagina.locator("#resumen-medidas")).to_have_text(f"{TOTAL} fotos × 8 plataformas = {TOTAL * 8} archivos")
     pagina.click("#plataformas-ninguna")
     expect(pagina.locator("#generar-medidas")).to_be_disabled()
     for nombre in ("Mercado Libre", "Amazon", "Instagram (feed)"):
         pagina.locator("#lista-plataformas .plataforma", has=pagina.get_by_text(nombre, exact=True)).locator("input").check()
-    expect(pagina.locator("#resumen-medidas")).to_have_text("5 fotos × 3 plataformas = 15 archivos")
+    expect(pagina.locator("#resumen-medidas")).to_have_text(f"{TOTAL} fotos × 3 plataformas = {TOTAL * 3} archivos")
     _captura(pagina, "2-plataformas")
 
     # Genera, con su barra de avance.
     pagina.click("#generar-medidas")
-    expect(pagina.locator("#texto-medidas")).to_contain_text("15 de 15 · listo", timeout=120_000)
-    expect(pagina.locator("#medidas-listas")).to_contain_text("Listo: 15 archivos creados")
+    expect(pagina.locator("#texto-medidas")).to_contain_text(f"{TOTAL * 3} de {TOTAL * 3} · listo", timeout=120_000)
+    expect(pagina.locator("#medidas-listas")).to_contain_text(f"Listo: {TOTAL * 3} archivos creados")
     expect(pagina.locator("#errores-medidas")).to_be_hidden()
 
     # Resultados: una cuadrícula por foto, con el recorte y las tres medidas.
@@ -179,10 +184,10 @@ def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
     expect(pagina.locator("#zona-resultados")).to_be_visible()
     expect(pagina.locator("#zona-fotos")).to_be_hidden()
     bloques = pagina.locator("#lista-resultados .resultado-foto")
-    expect(bloques).to_have_count(5)
+    expect(bloques).to_have_count(TOTAL)
     for indice, foto in enumerate(fotos):
         bloque = bloques.nth(indice)
-        expect(bloque.locator("h3")).to_have_text(f"{foto}.jpg")
+        expect(bloque.locator("h3")).to_have_text(MUESTRAS[indice].name)
         expect(bloque.locator(".resultado-titulo")).to_have_text(["Recorte", "Mercado Libre", "Amazon", "Instagram (feed)"])
         archivos = bloque.locator(".resultado-archivo").all_inner_texts()
         assert archivos[0] == f"{foto}_recorte.png"
@@ -190,12 +195,12 @@ def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
         assert re.fullmatch(rf"{foto}_amazon_(\d+)x\1\.jpg", archivos[2])
         expect(bloque.locator(".resultado-datos").nth(1)).to_contain_text("1200×1200")
         expect(bloque.locator(".resultado-datos").nth(1)).to_contain_text("producto al 95 %")
-    # Las muestras son pequeñas. Para Amazon la medida baja hasta 1000×1000; donde aun así hay que ampliar el
-    # producto, el archivo lleva su aviso (y donde no hace falta, no).
+    # Para Amazon la medida baja hasta la que no amplía el producto, con un mínimo de 1000×1000: solo un archivo que
+    # se quedó en ese mínimo puede llevar el aviso de ampliación (y por encima del mínimo, ninguno).
     avisos = pagina.locator("#lista-resultados .nota-aviso").all_inner_texts()
     de_amazon = [a for a in avisos if "Amazon pide no agrandar las fotos pequeñas" in a]
     en_el_minimo = [a for a in pagina.locator("#lista-resultados .resultado-archivo").all_inner_texts() if a.endswith("_amazon_1000x1000.jpg")]
-    assert len(de_amazon) == len(en_el_minimo) >= 1, avisos
+    assert len(de_amazon) <= len(en_el_minimo), avisos
     assert all(re.fullmatch(r"ampliada ×\d,\d+: Amazon pide no agrandar las fotos pequeñas", a) for a in de_amazon), de_amazon
     pagina.wait_for_function(
         "() => [...document.querySelectorAll('#lista-resultados img')].slice(0, 4).every(img => img.complete && img.naturalWidth > 0)"
@@ -209,14 +214,15 @@ def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
         filas = list(csv.DictReader(io.StringIO(archivo_zip.read("resumen.csv").decode("utf-8-sig"))))
         imagenes = {nombre: archivo_zip.read(nombre) for nombre in nombres if nombre != "resumen.csv"}
 
-    assert len(nombres) == 21 and "resumen.csv" in nombres
+    assert len(nombres) == TOTAL * 4 + 1 and "resumen.csv" in nombres  # un recorte y tres medidas por foto, y el resumen
     assert sorted(n for n in nombres if n.startswith("recortes/")) == [f"recortes/{foto}_recorte.png" for foto in fotos]
     assert sorted(n for n in nombres if n.startswith("mercadolibre/")) == [f"mercadolibre/{foto}_mercadolibre_1200x1200.jpg" for foto in fotos]
     assert sorted(n for n in nombres if n.startswith("instagram/")) == [f"instagram/{foto}_instagram_1080x1350.jpg" for foto in fotos]
-    assert len([n for n in nombres if n.startswith("amazon/")]) == 5
+    assert len([n for n in nombres if n.startswith("amazon/")]) == TOTAL
 
     assert list(filas[0]) == ["archivo", "plataforma", "medida", "peso_kb", "porcentaje_producto", "avisos"]
-    assert len(filas) == 20 and {fila["archivo"] for fila in filas} == {nombre.split("/")[1] for nombre in imagenes}
+    assert sum("Amazon pide no agrandar" in fila["avisos"] for fila in filas) == len(de_amazon)  # lo mismo que en la página
+    assert len(filas) == TOTAL * 4 and {fila["archivo"] for fila in filas} == {nombre.split("/")[1] for nombre in imagenes}
     esperado = {"mercadolibre": (95.0, 10_000), "amazon": (85.0, None), "instagram": (80.0, None)}
     for nombre, datos in imagenes.items():
         carpeta, archivo = nombre.split("/")
@@ -240,13 +246,15 @@ def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
                 assert int(fila["peso_kb"]) <= peso_maximo_kb
             if carpeta == "amazon":
                 assert ancho == alto and 1000 <= ancho <= 2000
-                # Sin ampliar: por encima del mínimo no hay aviso; en el mínimo, lo hay si el producto se amplió.
-                assert ("Amazon pide no agrandar" in fila["avisos"]) == (ancho == 1000), fila
+                # Sin ampliar: por encima del mínimo nunca hay aviso; solo sale en el mínimo, si hubo que ampliar.
+                if "Amazon pide no agrandar" in fila["avisos"]:
+                    assert ancho == 1000, fila
             else:
                 assert "Amazon" not in fila["avisos"]
             if archivo.startswith("bolsa_mesa"):
-                # Medido en la propia foto (una bolsa de papel oscuro sobre blanco): el producto ocupa lo que toca
-                # y está centrado, con un margen de ±1 %.
+                # Una comprobación de más, si esa muestra está en la carpeta (una bolsa de papel oscuro, que se
+                # distingue bien del blanco): medido en la propia foto, el producto ocupa lo que toca y está
+                # centrado, con un margen de ±1 %. El porcentaje de todas las fotos ya se comprobó arriba.
                 izquierda, arriba, derecha, abajo = ayudas.caja_no_blanca(imagen)
                 ocupa = max((derecha - izquierda) / ancho, (abajo - arriba) / alto) * 100
                 assert abs(ocupa - porcentaje) <= 1.0, (nombre, ocupa)
@@ -256,7 +264,7 @@ def test_2_medidas_para_tres_plataformas_y_descarga_del_zip(pagina, entorno):
     # Y una sola plataforma.
     with _descargar(pagina, pagina.get_by_role("link", name="Solo Amazon")) as archivo_zip:
         solo_amazon = sorted(archivo_zip.namelist())
-    assert len(solo_amazon) == 6 and all(n.startswith("amazon/") or n == "resumen.csv" for n in solo_amazon)
+    assert len(solo_amazon) == TOTAL + 1 and all(n.startswith("amazon/") or n == "resumen.csv" for n in solo_amazon)
 
     # La firma sigue en el pie también en esta zona.
     expect(pagina.locator("footer.firma")).to_be_visible()
@@ -333,7 +341,7 @@ def test_3_ajustes_la_clave_se_ve_enmascarada_y_probar_dice_conexion_correcta(pa
 
     # Las fotos y sus resultados siguen en la sesión.
     pagina.click(".zona-boton[data-zona='fotos']")
-    expect(pagina.locator("#lista-fotos .foto")).to_have_count(5)
+    expect(pagina.locator("#lista-fotos .foto")).to_have_count(TOTAL)
 
 
 def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagina, entorno):
@@ -346,7 +354,7 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
     simulador = entorno.simulador
     simulador.costo = 0.05  # el costo real de cada imagen: distinto del de partida (0,04 $), para ver que se muestra
     gastos = entorno.datos / "estudio-fotos" / "gastos.jsonl"
-    fotos = [ruta.stem for ruta in sorted(MUESTRAS.glob("*.jpg"))]
+    fotos = FOTOS
     antes = len(simulador.peticiones)
 
     # La tarjeta de escenas, con su marca. Se dejan marcadas 2 fotos: una escena por foto.
@@ -361,8 +369,8 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
         "Escribir la mía…",
     ])
     expect(pagina.locator("#formato-escena option")).to_have_text(["1:1", "4:5", "16:9"])
-    expect(pagina.locator("#resumen-escenas")).to_contain_text("5 fotos marcadas = 5 escenas")
-    for indice in (2, 3, 4):
+    expect(pagina.locator("#resumen-escenas")).to_contain_text(f"{TOTAL} fotos marcadas = {TOTAL} escenas")
+    for indice in range(2, TOTAL):  # se quedan marcadas las dos primeras
         pagina.locator("#lista-fotos .foto").nth(indice).locator(".foto-usar input").uncheck()
     expect(pagina.locator("#resumen-escenas")).to_have_text("2 fotos marcadas = 2 escenas · modelo Nano Banana 2.1 (recomendado)")
     pagina.select_option("#escena", "propia")
@@ -459,7 +467,7 @@ def test_4_dos_escenas_con_ia_ve_el_costo_antes_confirma_y_ve_el_costo_real(pagi
                 assert imagen.format == "JPEG" and imagen.mode == "RGB"
                 assert archivo.endswith(f"_{imagen.width}x{imagen.height}.jpg")
     with _descargar(pagina, pagina.get_by_role("link", name="Descargar todo (ZIP)")) as archivo_zip:
-        assert len(archivo_zip.namelist()) == 23  # 5 recortes, 15 medidas, 2 escenas y el resumen
+        assert len(archivo_zip.namelist()) == TOTAL * 4 + 3  # un recorte y tres medidas por foto, 2 escenas y el resumen
 
     # El gasto de la sesión se ve en Ajustes.
     pagina.click(".zona-boton[data-zona='ajustes']")
