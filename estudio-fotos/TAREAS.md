@@ -141,7 +141,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
       copias idénticas y solo se cargan de la carpeta; contraste AA calculado; botones, tarjetas, campos y foco como
       en la ficha), `test_pagina.py` (la lista blanca: nada de internet, tampoco las fuentes) y `test_estructura.py`
       (la firma).
-- [ ] **Paso 29 · Diseño (2) · la página**: la cabecera con el logo de Ismagit (28 px) y «Estudio de fotos», las tres
+- [x] **Paso 29 · Diseño (2) · la página**: la cabecera con el logo de Ismagit (28 px) y «Estudio de fotos», las tres
       zonas, un solo botón principal por zona, Geist Mono en cifras, medidas y nombres de archivo, tarjetas y campos.
       Prueba: `test_diseno.py` (el logo y el nombre; un solo principal por zona en el HTML; Geist Mono donde toca) y
       `test_pagina.py`.

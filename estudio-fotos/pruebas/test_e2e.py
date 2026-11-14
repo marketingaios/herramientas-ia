@@ -81,7 +81,13 @@ def test_1_subir_todas_las_muestras_y_ver_un_recorte_por_foto(pagina, entorno):
     from playwright.sync_api import expect
 
     # La página vacía: el título, la zona para soltar y la firma en el pie.
-    expect(pagina.locator("h1")).to_have_text("Estudio de fotos de producto")
+    expect(pagina.locator("h1")).to_have_text("Estudio de fotos")
+    logo = pagina.locator("header .cabecera-logo")  # el logo de Ismagit, arriba a la izquierda, de 28 px de alto
+    expect(logo).to_have_attribute("src", "/marca/ismagit_logo.png")
+    pagina.wait_for_function("img => img.complete && img.naturalWidth > 0", arg=logo.element_handle())
+    caja_logo, caja_nombre = logo.bounding_box(), pagina.locator("h1").bounding_box()
+    assert round(caja_logo["height"]) == 28 and caja_logo["x"] < 200 and caja_logo["y"] < 40
+    assert caja_nombre["x"] > caja_logo["x"] + caja_logo["width"] and abs(caja_nombre["y"] - caja_logo["y"]) < 12  # al lado
     expect(pagina.locator("#soltar")).to_contain_text("Arrastra aquí tus fotos")
     expect(pagina.locator("footer.firma")).to_contain_text("Hecho con la guía de Ismagit")
     expect(pagina.locator("footer.firma a")).to_have_attribute("href", ENLACE_FIRMA)

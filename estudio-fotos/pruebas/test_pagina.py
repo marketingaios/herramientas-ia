@@ -133,7 +133,8 @@ def test_el_enlace_de_la_firma_no_cuenta_de_donde_viene():
 def test_el_servidor_sirve_la_pagina_y_sus_archivos(servidor):
     pagina = servidor.cliente.get("/")
     assert pagina.status_code == 200 and pagina.headers["content-type"] == "text/html; charset=utf-8"
-    assert "Estudio de fotos de producto" in pagina.text and "Hecho con la guía de Ismagit" in pagina.text
+    assert "<h1>Estudio de fotos</h1>" in pagina.text and "Hecho con la guía de Ismagit" in pagina.text
+    assert "<title>Estudio de fotos de producto</title>" in pagina.text
     assert pagina.headers["cache-control"] == "no-store" and "default-src 'self'" in pagina.headers["content-security-policy"]
     assert pagina.headers["referrer-policy"] == "no-referrer"  # el enlace de la firma no lleva la dirección local
     for ruta, tipo in (("/web/app.js", "javascript"), ("/web/app.css", "text/css"), ("/estilo/estilo.css", "text/css"), ("/marca/ismagit_logo.png", "image/png")):

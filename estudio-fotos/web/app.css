@@ -555,11 +555,14 @@ input[type="color"] {
   min-width: 0;
 }
 
+/* Cifras sueltas: la clave enmascarada, el tope, lo gastado, el color elegido y las cuentas de cada lote */
 #clave,
 #tope-sesion,
 #mascara-clave,
 #gasto-sesion,
-#texto-color-escena {
+#texto-color-escena,
+#resumen-medidas,
+#resumen-escenas {
   font-family: var(--fuente-mono);
   font-variant-numeric: tabular-nums;
 }

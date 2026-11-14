@@ -184,7 +184,8 @@ def test_geist_para_todo_y_geist_mono_para_cifras_medidas_y_nombres_de_archivo()
     # Los campos y los botones heredan la fuente de la página (los navegadores no lo hacen solos).
     assert _regla(estilo, ".boton")["font"] == "inherit" and _regla(estilo, "select")["font"] == "inherit"
     for selector in (".avance-texto", ".foto-nombre", ".foto-estado", ".plataforma-medida", ".resultado-archivo",
-                     ".resultado-datos", ".confirmar strong", "#gasto-sesion", "#mascara-clave", "#texto-color-escena"):
+                     ".resultado-datos", ".confirmar strong", "#gasto-sesion", "#mascara-clave", "#texto-color-escena",
+                     "#tope-sesion", "#resumen-medidas", "#resumen-escenas", ".resultado-foto h3"):
         assert _regla(app, selector)["font-family"] == "var(--fuente-mono)", selector
     # Ninguna hoja nombra otra familia: todo sale de las dos variables.
     for nombre, css in _hojas().items():
@@ -272,6 +273,57 @@ def test_cada_texto_de_color_va_sobre_un_fondo_comprobado():
                 assert fondo in de_fondo, f"{nombre}: {selectores} background: {fondo}"
     # Las notas (avisos, errores, lo que salió bien) van sobre el fondo de los campos, con el texto del color de su estado.
     assert _regla(_lee(ESTILO), ".nota")["background"] == "var(--card2)"
+
+
+# --- La cabecera y un solo botón principal por zona -------------------------------------------------------------------
+
+
+def test_el_logo_de_ismagit_va_arriba_a_la_izquierda_con_el_nombre_de_la_herramienta():
+    html = " ".join(_lee(WEB / "index.html").split())
+    assert html.count("<header") == 1 and html.index("<body> <header class=\"cabecera\">") > 0  # lo primero de la página
+    cabecera = re.search(r"<header class=\"cabecera\">(.*?)</header>", html).group(1)
+    assert re.search(
+        r'^\s*<div class="cabecera-dentro">\s*<div class="cabecera-marca">\s*'
+        r'<img class="cabecera-logo" src="/marca/ismagit_logo\.png" alt="Ismagit" height="28" />\s*'
+        r"<h1>Estudio de fotos</h1>\s*</div>\s*<nav class=\"zonas\"", cabecera), cabecera[:300]
+    estilo = _lee(ESTILO)
+    assert _regla(estilo, ".cabecera-logo")["height"] == "28px"
+    assert _regla(estilo, ".cabecera-dentro")["justify-content"] == "space-between"  # el logo, a la izquierda
+    # La herramienta no tiene una marca propia ni la del negocio de quien la usa: las únicas imágenes fijas de la
+    # página son el logo de Ismagit de la cabecera y el de la firma (más el icono de la pestaña).
+    assert re.findall(r'<img[^>]*src="([^"]+)"', html) == ["/marca/ismagit_logo.png", "/marca/ismagit_logo.png"]
+    assert html.count("ismagit_logo.png") == 3 and html.count("<h1") == 1
+
+    inicio = " ".join(_lee(INICIO / "index.html").split())
+    assert '<div class="cabecera-marca"> <img class="cabecera-logo" src="../marca/ismagit_logo.png" alt="Ismagit" height="28" /> <h1>' in inicio
+    assert re.findall(r'<img[^>]*src="([^"]+)"', inicio) == ["../marca/ismagit_logo.png", "../marca/ismagit_logo.png"]
+
+
+def test_un_solo_boton_principal_por_zona():
+    html = _lee(WEB / "index.html")
+    zonas = {
+        nombre: re.search(rf'<section class="zona" id="zona-{nombre}".*?</section>', html, re.S).group(0)
+        for nombre in ("fotos", "resultados", "ajustes")
+    }
+    principales = {nombre: re.findall(r'<(?:button|a)\b[^>]*class="[^"]*\bboton-principal\b[^"]*"[^>]*id="([a-z-]+)"', zona)
+                   for nombre, zona in zonas.items()}
+    assert principales == {"fotos": ["generar-medidas"], "resultados": [], "ajustes": ["guardar-ajustes"]}
+    assert html.count("boton-principal") == 2
+    # Los demás botones de acción son secundarios normales, también los que confirman un gasto o guardan la clave.
+    for identificador in ("ver-costo", "generar-escenas", "cancelar-escenas", "guardar-clave", "probar-clave", "ver-resultados", "ver-escenas"):
+        assert f'<button type="button" class="boton" id="{identificador}"' in html, identificador
+    # En Resultados el principal lo crea el código: «Descargar todo (ZIP)», y solo ese.
+    js = _lee(WEB / "app.js")
+    assert js.count("boton-principal") == 1
+    assert 'crear("a", plataforma ? "boton" : "boton boton-principal", texto)' in js
+    assert js.count('botonDescarga("Descargar todo (ZIP)", null)') == 1 and js.count("botonDescarga(") == 5
+    # Ninguna hoja inventa otro botón relleno de acento.
+    for nombre, css in _hojas().items():
+        for selectores, cuerpo in _reglas(css):
+            if cuerpo.get("background") == "var(--acento)":
+                assert all(s.startswith((".boton-principal", ".barra > div")) for s in selectores), f"{nombre}: {selectores}"
+    # La página de inicio es una sola zona: el botón de la herramienta.
+    assert _lee(INICIO / "index.html").count("boton-principal") == 1
 
 
 # --- La firma ---------------------------------------------------------------------------------------------------------

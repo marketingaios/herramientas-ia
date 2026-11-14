@@ -13,7 +13,8 @@
     <header class="cabecera">
       <div class="cabecera-dentro">
         <div class="cabecera-marca">
-          <h1>Estudio de fotos de producto</h1>
+          <img class="cabecera-logo" src="/marca/ismagit_logo.png" alt="Ismagit" height="28" />
+          <h1>Estudio de fotos</h1>
         </div>
         <nav class="zonas" aria-label="Zonas de la página">
           <button type="button" class="zona-boton" data-zona="fotos" aria-current="page">Fotos</button>
@@ -140,14 +141,14 @@
             <textarea id="escena-propia" rows="2" placeholder="Por ejemplo: sobre una manta de picnic, en un parque, al atardecer"></textarea>
           </label>
           <div class="fila">
-            <button type="button" class="boton boton-principal" id="ver-costo">Ver el costo</button>
+            <button type="button" class="boton" id="ver-costo">Ver el costo</button>
             <span class="ayuda" id="resumen-escenas"></span>
           </div>
           <p class="nota nota-error" id="error-escenas" hidden></p>
           <div class="nota fila-entre confirmar" id="confirmar-escenas" hidden>
             <strong id="texto-estimacion"></strong>
             <span class="fila">
-              <button type="button" class="boton boton-principal" id="generar-escenas">Sí, generar</button>
+              <button type="button" class="boton" id="generar-escenas">Sí, generar</button>
               <button type="button" class="boton" id="cancelar-escenas">No, cancelar</button>
             </span>
           </div>
@@ -207,7 +208,7 @@
               <span id="etiqueta-clave">Pega aquí tu clave</span>
               <input type="password" id="clave" autocomplete="off" spellcheck="false" placeholder="sk-or-…" />
             </label>
-            <button type="button" class="boton boton-principal" id="guardar-clave">Guardar clave</button>
+            <button type="button" class="boton" id="guardar-clave">Guardar clave</button>
           </div>
         </div>
 
