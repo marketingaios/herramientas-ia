@@ -245,7 +245,8 @@ def test_agents_md_describe_las_carpetas_comunes_de_la_ficha_1_1():
 
 
 def test_no_queda_el_negocio_de_ejemplo_de_la_version_1():
-    """Ni su nombre, ni su logo, ni sus colores, en ningún archivo del proyecto: código, pruebas, páginas y documentos.
+    """Ni su nombre, ni su logo, ni sus colores, ni sus fotos, en ningún archivo del proyecto: código, pruebas, páginas
+    y documentos.
 
     El nombre se arma aquí por partes para que esta prueba no lo lleve escrito. No se miran las carpetas de datos de
     quien usa la herramienta (sus ajustes, sus resultados), ni nunca el archivo de la clave.
@@ -253,6 +254,7 @@ def test_no_queda_el_negocio_de_ejemplo_de_la_version_1():
     numero = "26" + "00"
     nombre = re.compile(rf"caf(e|é|É|Ã©|\\u00e9)[\s_\-·]*{numero}".encode("utf-8"), re.I)
     colores = [("#1F" + "3B2D").encode(), ("#C8" + "A04B").encode(), ("#C8" + "A26B").encode(), ("#C4" + "622D").encode()]
+    fotos = [("bolsa_500g" + "_cocina").encode(), ("bolsa_" + "cenital").encode(), ("caja_" + "suscripcion").encode()]
     fuera = {".git", ".venv", "venv", "modelos", "trabajo", "salidas", ".pruebas-tmp", ".navegadores", "__pycache__",
              ".pytest_cache", "node_modules"}
     de_datos = {"ajustes.json", "gastos.jsonl", "medicion.json", "logo_negocio.png"}  # lo que escribe la herramienta al usarla
@@ -262,6 +264,7 @@ def test_no_queda_el_negocio_de_ejemplo_de_la_version_1():
         if not ruta.is_file() or fuera & set(partes) or ruta.name.startswith(".env") or ruta.name in de_datos:
             continue
         assert not nombre.search(ruta.name.encode("utf-8")), f"el nombre del archivo {ruta.name}"
+        assert not any(foto in ruta.name.encode("utf-8") for foto in fotos), f"sigue la foto {ruta.name}"
         if ruta.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".woff2", ".zip", ".onnx"} or ruta.name == "uv.lock":
             continue  # las fotos y las fuentes no son texto; `uv.lock` lo escribe uv (son nombres y huellas)
         datos = ruta.read_bytes()
@@ -269,6 +272,8 @@ def test_no_queda_el_negocio_de_ejemplo_de_la_version_1():
         assert not nombre.search(datos), f"{'/'.join(partes)} todavía nombra al negocio de ejemplo"
         for color in colores:
             assert color not in datos.upper(), f"{'/'.join(partes)} todavía lleva un color del negocio de ejemplo"
+        for foto in fotos:
+            assert foto not in datos, f"{'/'.join(partes)} todavía nombra una foto del negocio de ejemplo"
     assert mirados > 60
     # Tampoco quedan su logo ni sus tres fotos: en `marca/` y `muestras/` no hay nada más que lo de la guía.
     assert sorted(p.name for p in (RAIZ / "muestras").iterdir() if not p.name.startswith(".")) == [

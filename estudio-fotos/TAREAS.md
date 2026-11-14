@@ -163,7 +163,7 @@ la vez, cada uno con su prueba y su commit, y las pruebas anteriores siguen pasa
 
 ## Pruebas, revisión y entrega
 
-- [ ] **Paso 32 · Pruebas**: todas (rápidas, modelo real y punta a punta) → `PRUEBAS.md` actualizado: cuántas pasan,
+- [x] **Paso 32 · Pruebas**: todas (rápidas, modelo real y punta a punta) → `PRUEBAS.md` actualizado: cuántas pasan,
       cuánto tardan, el tiempo por foto con las muestras de la guía 1.1 y la aceleración medida otra vez; se conservan
       los seis controles y lo que no se probó.
 - [ ] **Paso 33 · Revisión corta**: el Revisor comprueba los puntos de seguridad que tocan estos cambios (el 9, la
