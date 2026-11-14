@@ -87,6 +87,7 @@ def test_gitignore_cubre_lo_pedido():
         "estudio-fotos/salidas/2026-11-13_1200/recortes/foto_recorte.png",
         "estudio-fotos/gastos.jsonl",
         "estudio-fotos/ajustes.json",
+        "estudio-fotos/ajustes.json.tmp-12345",  # el temporal de guardar los ajustes, si la escritura se corta a medias
         "estudio-fotos/.venv/pyvenv.cfg",
         "estudio-fotos/estudio/__pycache__/config.cpython-312.pyc",
     ],

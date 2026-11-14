@@ -408,3 +408,222 @@ del README que cita esta sección son los del commit `791461c`.
   carpeta personal como la escribe Windows, en `estudio/registro.py:27-34`). La frase del README de N3
   (`estudio-fotos/README.md:150-151`) ya está cambiada en la carpeta de trabajo, sin commit todavía.
 
+# Revisión de seguridad · versión 1.1
+
+- **Fecha**: 14 de noviembre de 2026.
+- **Quién revisa**: el Revisor, un subagente con el contexto limpio, que no escribe código. Solo escribió esta sección:
+  no cambió código, pruebas ni configuración, no hizo commits, no arrancó la herramienta de verdad, no llamó a
+  OpenRouter, no gastó dinero y no abrió el archivo de la clave.
+- **Qué se revisó**: la rama `version-1.1` en el commit `39f999f` (10 commits desde `main`, sin cambios pendientes),
+  contra los puntos 1, 4.7, 7 y 13 de la ficha. Es una revisión corta: solo los puntos que tocan los cambios de la 1.1.
+- **Cómo**: lectura del código y de `git diff main..HEAD` (no de lo que dicen los documentos ni los mensajes de los
+  commits); las tres baterías de pruebas, una cada vez; comandos de solo lectura de git; y comprobaciones propias con
+  datos de mentira en la carpeta temporal de las pruebas (`estudio-fotos/.pruebas-tmp/`, fuera de git).
+- **Veredicto**: **Aprobada**, con dos sugerencias que no bloquean (el detalle, al final).
+
+Las rutas son relativas a `herramientas-ia/`; `estudio/…` y `pruebas/…` están dentro de `estudio-fotos/`.
+
+## Los puntos que tocan los cambios
+
+| N.º | Punto | Estado |
+|---|---|---|
+| 9 | La página no carga nada de internet, tampoco las fuentes | **Bien** |
+| 8 | Escribe solo dentro de `herramientas-ia` (la limpieza al arrancar) | **Bien** (ver S1) |
+| 5 | Subidas, ya sin la del logo | **Bien** |
+| 2 | Ninguna clave | **Bien** |
+| 3 | Fuera de git lo que debe estarlo | **Bien** (ver S2) |
+| 6 | Conexiones, y el color que viaja a OpenRouter | **Bien** |
+| 1, 4, 7 y 10 | El diff no los toca | **Bien**, sin cambios |
+
+**9 · La página no carga nada de internet, tampoco las fuentes · Bien**
+
+- La herramienta: `estudio-fotos/web/index.html:7-10` carga el icono, las dos hojas y el programa desde `/marca/`,
+  `/estilo/` y `/web/`; las imágenes fijas son el logo de Ismagit (`:16`, `:263`). `web/app.css` no tiene ningún
+  `url(` ni importaciones, y `web/app.js` tiene una sola llamada `fetch` (`:43`), siempre a rutas `/api/…`, de donde
+  salen también las fotos que pinta. La única dirección de fuera es el enlace de la firma (`:262`): se pulsa, no se
+  carga.
+- Las fuentes: `estilo/estilo.css:7-45` tiene cuatro reglas `font-face`, y sus cuatro `url(` son los únicos de las
+  tres hojas: `fuentes/geist-….woff2`, rutas relativas a archivos de `estilo/fuentes/`. Mirado: los cuatro son WOFF2
+  de verdad, iguales byte a byte a los de `marca/fuentes/`, con su `OFL.txt` al lado, y en `estilo/`, `marca/`, `web/`
+  e `inicio/` no hay enlaces simbólicos. Detrás de Geist solo van fuentes del sistema (`estilo/estilo.css:65-66`).
+- La página de inicio: `inicio/index.html:7-8`, `:14` y `:45` cargan `../estilo/estilo.css`, `inicio.css` y
+  `../marca/ismagit_logo.png`; no lleva programa. `inicio/inicio.css` no tiene `url(`. `estilo/firma.html:5-6`, igual.
+- El servidor: la política CSP no cambió (`estudio/servidor.py:54-57`: todo `'self'`, también `font-src`) y va en
+  todas las respuestas (`:101-112`). `/web/`, `/estilo/` y `/marca/` salen por `StaticFiles` (`:257-259`). La 1.1 solo
+  añade `Cache-Control: no-cache` a `/web/` y `/estilo/` (`:108-111`).
+- Comprobado por el Revisor, llamando a la aplicación (sin abrir ningún puerto) sobre una copia de `estilo/` y
+  `marca/` con trampas dentro: las fuentes salen como `font/woff2`, con la CSP entera y `nosniff`; y 29 rutas tramposas
+  dan todas 404 sin soltar nada de fuera (enlaces simbólicos puestos dentro de `estilo/`, `estilo/fuentes/` y `marca/`
+  que apuntan fuera, rutas con `..` escritas de varias formas, rutas absolutas, y las demás carpetas de
+  `herramientas-ia`). Por `/marca/` salen también los otros dos logos de Ismagit y la copia de las fuentes, que
+  ninguna página usa: no tienen nada privado.
+- Pruebas (leídas: comprueban de verdad): `pruebas/test_pagina.py::test_la_pagina_no_carga_nada_de_internet` y
+  `::test_la_pagina_de_inicio_tampoco_carga_nada_de_internet`;
+  `pruebas/test_diseno.py::test_las_fuentes_solo_se_cargan_de_estilo_fuentes` (una lista blanca);
+  `pruebas/test_servidor.py::test_los_archivos_de_la_pagina_son_locales` y
+  `::test_no_se_puede_salir_de_las_carpetas_de_la_pagina`. En el navegador, el recorrido 5 de `pruebas/test_e2e.py`
+  exige que Geist y Geist Mono queden cargadas desde `/estilo/fuentes/`, y
+  `::test_6_la_pagina_no_cargo_nada_de_internet_ni_dio_errores`, que cada petición vaya a este computador y que la
+  consola quede sin errores.
+
+**8 · Escribe solo dentro de `herramientas-ia` · Bien**
+
+- Código: `estudio/ajustes.py:55-79` (`limpiar_version_1`). Toca dos rutas y nada más, las dos sacadas de la
+  configuración (`estudio/config.py:61-68`: `ajustes.json` y `logo_negocio.png`, en la carpeta de datos, que es
+  `estudio-fotos/`). Se llama una vez, al arrancar de verdad (`estudio/servidor.py:207-210`, por
+  `estudio/estudio.py:246-248`). No busca por la carpeta, no borra carpetas y no registra nada.
+- `ajustes.json` solo se vuelve a escribir si se lee bien, es un objeto y trae campos de más; se escribe en un
+  temporal de la misma carpeta y se cambia de una vez (`estudio/ajustes.py:47-52`). El logo se borra con un solo
+  `unlink` (`:77`).
+- Comprobado por el Revisor, en 11 casos: si `ajustes.json` es un enlace a un archivo de fuera, lo de fuera queda
+  intacto y el enlace pasa a ser un archivo normal con los tres ajustes. Un enlace roto, un enlace a una carpeta, una
+  carpeta y un archivo con BOM no se tocan. Si el logo es un enlace a una carpeta de fuera, se quita solo el enlace;
+  si es una carpeta con cosas, se queda. Con la carpeta de solo lectura no falla, no cambia nada y no deja restos. Un
+  archivo vecino (`logo_negocio.png.bak`) no se toca. Los valores raros (un número donde va un texto, `NaN`) se
+  conservan tal cual, y al cargarlos valen los de fábrica. Queda un caso sin cubrir: es la sugerencia S1.
+- Pruebas: las del paso 27 en `pruebas/test_ajustes.py` (la carpeta de la versión 1 entera, la segunda arrancada sin
+  cambios, 9 archivos rotos o ya limpios, el logo que no se puede borrar, el logo que es un enlace) y
+  `pruebas/test_arranque.py::test_al_arrancar_se_quita_la_marca_del_negocio_que_dejo_la_version_1`, con el proceso de
+  verdad. El vigilante de `pruebas/conftest.py:57-87` mira también el `logo_negocio.png` real.
+- Los archivos reales, antes y después de todas las pasadas: `ajustes.json`, `gastos.jsonl`, `logo_negocio.png` y
+  `medicion.json` tienen el mismo tamaño, la misma fecha y la misma huella; `salidas/` sigue con sus 22 archivos sin
+  tocar; y el archivo de la clave, con el mismo tamaño y la misma fecha (en el listado de la carpeta se ve con
+  permisos 600; no se abrió). `ajustes.json` y `logo_negocio.png` siguen como los dejó la versión 1: la limpieza los
+  cambiará la primera vez que se abra la 1.1, como avisan el README y `CAMBIOS.md`.
+
+**5 · Subidas · Bien**
+
+- `estudio/subidas.py` no cambió (tipo por el contenido, 25 MB, píxeles, nombres sin rutas), y la entrada de las
+  fotos sigue entera: solo el campo `fotos` (`estudio/servidor.py:182-192`), el peso mirado antes de recibir
+  (`:170-179`), un nombre propio en el disco (`:195-201`) y hasta 20 fotos (`:273-289`).
+- La subida del logo se quitó entera: no quedan sus tres rutas, ni `guardar_logo`, `quitar_logo` y el tope del logo,
+  ni su campo en la página, donde el único campo de archivo es el de las fotos (`web/index.html:45`). Buscado con grep
+  en `estudio/` y `web/`: no hay código a medias. Comprobado: `GET /api/logo` y `GET`, `POST` y `DELETE
+  /api/ajustes/logo` dan 404.
+- Pruebas: `pruebas/test_servidor.py::test_las_rutas_del_logo_ya_no_existen`,
+  `pruebas/test_ajustes.py::test_el_estudio_ya_no_guarda_ni_sirve_ningun_logo`, y las de `pruebas/test_subidas.py` y
+  de la subida «por trozos», que siguen pasando.
+
+**2 · Ninguna clave · Bien**
+
+- El diff no toca `estudio/clave.py`, `estudio/openrouter.py` ni `estudio/registro.py`. Lo nuevo no registra nada (la
+  limpieza), y el error del color es un mensaje fijo.
+- Historial: `git log -p main..HEAD` tiene 2 líneas con el patrón de las claves de OpenRouter, que son una
+  comprobación de una prueba y el texto de ayuda del campo de la clave, que ya estaba. En todo el historial son 21
+  (19 de `main`): patrones de búsqueda, ese texto de ayuda y claves de mentira hechas con palabras. Lo más largo mide
+  34 caracteres, y ninguna tiene forma de clave (ninguna con 40 caracteres seguidos o más).
+- Una clave no puede viajar donde va el color: `pruebas/test_privacidad.py::test_la_clave_no_aparece_en_ningun_sitio`
+  envía la clave falsa como color a las dos rutas de escenas, recibe un 400 que no la repite y comprueba que no se
+  llamó a nadie. El recorrido 6 de punta a punta mira que la salida del servidor no lleve la clave ni el color.
+
+**3 · Fuera de git · Bien**
+
+- `.gitignore` no cambió en la 1.1 (`:2-3`, `:6`, `:9-10`, `:13-17`). `git check-ignore` confirma, ruta por ruta,
+  `ajustes.json`, `gastos.jsonl`, `medicion.json`, `logo_negocio.png`, `salidas/`, `trabajo/`, `modelos/`,
+  `.pruebas-tmp/` y `.navegadores/`. `git ls-files` (84 archivos) no lista ninguno, y en el historial nunca entraron
+  (mirado por nombres). Después de las pruebas, `git status` sigue limpio.
+- Lo que la 1.1 metió en git: las 4 fuentes con su licencia (dos veces, en `marca/fuentes/` y en `estilo/fuentes/`),
+  `marca/ismagit_logo.png`, 4 fotos de muestra y `pruebas/test_diseno.py`. Mirados los binarios: son lo que dicen ser
+  (WOFF2, PNG, JPEG). Las fotos y los logos no llevan GPS ni autor en sus metadatos, ni rutas personales ni el nombre
+  de la cuenta dentro; las fuentes van comprimidas y no se miraron por dentro (son las de la guía). En las líneas que
+  añade la rama no hay rutas personales ni correos. El repositorio no tiene remotos.
+
+**6 · Conexiones, y el color que viaja a OpenRouter · Bien**
+
+- La 1.1 no añade ninguna librería de red ni ninguna dirección: `estudio/openrouter.py` no cambió, y la única
+  dirección de internet a la que llama el código sigue siendo la de OpenRouter (`estudio/config.py:15`).
+- El color llega por `web/app.js:464` y `estudio/servidor.py:357-376`, y antes de usarse pasa por `validar_color`
+  (`estudio/escenas.py:118-128`): solo vale un texto que sea, entero, `#` y seis cifras hexadecimales (`:61`, con
+  `fullmatch`); si no llega, gris claro. Se comprueba con cualquier escena, y antes de estimar, de mirar la clave y de
+  llamar a nadie (`estudio/estudio.py:690-695`, `:711`, `:746`). Solo entra en el texto de «Fondo liso de un color» y
+  en el título de esa escena (`estudio/escenas.py:145-146`).
+- No va al nombre del archivo (`estudio/escenas.py:276` usa el id, `fondo-liso`), ni a `gastos.jsonl`, ni a
+  `resumen.csv`, ni a los registros. En la página, el título se escribe como texto (`web/app.js:603-617`).
+- Comprobado por el Revisor: 22 valores raros (un salto de línea delante o detrás, espacios, cifras de otros
+  alfabetos, 5 o 7 cifras, un carácter nulo, una frase detrás del color, otros tipos) dan todos el mensaje fijo;
+  `#a1b2c3` sale como `#A1B2C3`, y solo en esa escena.
+- Pruebas: `pruebas/test_escenas.py::test_un_color_que_no_es_un_color_no_vale_con_ninguna_escena` y
+  `pruebas/test_servidor.py::test_un_color_que_no_vale_da_su_mensaje_en_las_dos_rutas_con_cualquier_escena`.
+
+**1, 4, 7 y 10 · sin cambios**
+
+- **1**: `estudio/__main__.py` no cambió: sigue solo en `127.0.0.1`.
+- **4**: `pyproject.toml` y `uv.lock` solo cambian la versión del proyecto (de 1.0.0 a 1.1.0): ninguna dependencia.
+- **7**: en lo añadido a `estudio/` y `web/` no hay `shell=True`, `eval`, `exec`, procesos nuevos ni `innerHTML`.
+- **10**: `estudio/recorte.py` no cambió.
+
+## Los seis cambios del punto 13 (observaciones, fuera de la seguridad)
+
+Mirados en el código y en las páginas: los seis están hechos como dice la ficha.
+
+- **1 · Diseño**: las 11 variables con sus valores exactos (`estilo/estilo.css:49-59`), Geist local, el logo de 28 px
+  con «Estudio de fotos» (`web/index.html:16-17`) y la firma. La página no se miró a ojo: vale el recorrido 5.
+- **2 · Sin marca del negocio**: quedan tres ajustes (`estudio/ajustes.py:17-22`), el estado ya no trae `negocio`
+  (comprobado) y nada de lo que llega del servidor cambia los colores (`web/app.js:104-110`).
+- **3 · Escenas**: `estudio/escenas.py:39-44` y el selector de color (`web/index.html:131-136`).
+- **4 · Muestras**: las cuatro fotos nuevas están, y las pruebas usan las que haya (`pruebas/conftest.py:41-46`).
+- **5 · Mac y Windows**: `estudio-fotos/README.md:3`. **6 · Versión**: `estudio-fotos/CAMBIOS.md:3`, `AGENTS.md:38` e
+  `inicio/index.html:34`.
+
+Restos del negocio de ejemplo de la versión 1:
+
+- En el código, las pruebas, las páginas y los documentos no queda nada (grep propio y
+  `pruebas/test_estructura.py::test_no_queda_el_negocio_de_ejemplo_de_la_version_1`). De la marca del negocio solo
+  quedan la limpieza y la ruta del logo antiguo (`estudio/config.py:66-68`), que hacen falta para quitarla.
+- Dos fotos de `muestras/` que se quedan, `bolsa_mesa.jpg` y `taza_logo.jpg`, enseñan su marca en el producto
+  (miradas). `PLAN.md` (apartado 8.3, decisión 13) dice que son de la guía 1.1 y que se quedan: lo decide el dueño.
+- El historial de git conserva su logo y sus tres fotos: no se reescribe (la misma decisión).
+- Los apartados 1 a 7 de `PLAN.md` y los pasos antiguos de `TAREAS.md` siguen hablando de la marca del negocio y de
+  las rutas del logo: son el plan de la versión 1, y el apartado 8.1 dice qué ya no vale.
+
+## Sugerencias (no bloquean)
+
+- **S1 · baja · un `ajustes.json` con muchísimos niveles impide arrancar** (`estudio/ajustes.py:34` y `:69`).
+  Comprobado: con 200.000 corchetes abiertos, `cargar` y `limpiar_version_1` lanzan `RecursionError`, que no es
+  ninguno de los dos errores que se atrapan. Deducido del código, sin arrancar: `estudio/estudio.py:209` llama a
+  `cargar` sin protección, así que la herramienta no arrancaría. Ya pasaba en la versión 1 con `cargar`; la 1.1
+  repite el mismo `except` en la limpieza. No se puede provocar desde la página (el servidor solo escribe los tres
+  ajustes ya comprobados): hay que escribir el archivo a mano. Arreglo: atrapar también `RecursionError` en los dos
+  sitios y añadir el caso a la prueba de los archivos rotos.
+- **S2 · baja · el temporal de `ajustes.json` no está en `.gitignore`** (`estudio/ajustes.py:50`, `.gitignore:15`).
+  Al guardar se escribe primero `ajustes.json.tmp-N` (N es el número del proceso), y `git check-ignore` dice que ese
+  nombre no está ignorado. Supuesto, sin reproducir: si la escritura se corta a medias, git vería ese archivo. Con la
+  1.1 solo llevaría los tres ajustes, sin datos del negocio, y en los casos del Revisor no quedó ningún resto.
+  Arreglo: una línea `*/ajustes.json.tmp-*` en `.gitignore`.
+
+## Pruebas pasadas
+
+Desde `herramientas-ia`, una batería cada vez, sobre el commit `39f999f`:
+
+| Batería | Resultado | Tarda |
+|---|---|---|
+| Rápidas (`uv run --directory estudio-fotos --group pruebas pytest`) | 830 pasan, ninguna falla | 1 min 35 s |
+| Con el modelo real (`-m modelo`) | 10 pasan | 5 min 45 s |
+| De punta a punta (`-m e2e`) | 6 pasan | 4 min 54 s |
+| **Total** | **846 pasan** | |
+| Rápidas otra vez, después de escribir esta sección (una prueba vigila los documentos) | 830 pasan | 2 min 02 s |
+
+Todas pasaron a la primera: no hubo que repetir ninguna. Los tiempos salen más altos que en `PRUEBAS.md` porque el
+computador estaba ocupado con otros trabajos. Las pruebas con el modelo real no descargaron nada (en `modelos/` no
+cambió ningún archivo) y las de punta a punta usan OpenRouter simulado.
+
+## Lo que no se pudo comprobar
+
+- El arranque de verdad sobre los datos reales: no se arrancó la herramienta. La limpieza se probó con copias y con
+  datos de mentira, nunca con el `ajustes.json` ni el `logo_negocio.png` reales.
+- La página a ojo, en una pantalla: valen las pruebas de punta a punta.
+- OpenRouter de verdad: no se llamó ni se gastó nada. No se sabe cómo pinta el modelo el color pedido.
+- Windows y Linux, y otros navegadores: los enlaces y los permisos se probaron solo en este Mac, y la página, solo
+  en Chromium. La página de inicio abierta como archivo en otro navegador no se probó: si no cargara Geist, se vería
+  con la fuente del sistema.
+- El contenido del archivo de la clave: nunca se abrió.
+
+## Veredicto
+
+**Aprobada.**
+
+- No hay nada que corregir: ningún punto «Hay que corregir». Los puntos 9, 8, 5, 2, 3 y 6 están «Bien», y el diff no
+  toca el 1, el 4, el 7 ni el 10.
+- Pasan las 846 pruebas (830 rápidas, 10 con el modelo real y 6 de punta a punta).
+- Las sugerencias S1 y S2 son de gravedad baja y no bloquean la entrega: pueden ir en esta versión o en la siguiente.
+

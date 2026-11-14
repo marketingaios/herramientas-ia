@@ -31,7 +31,7 @@ def cargar(ruta: Path) -> dict:
     ajustes = copy.deepcopy(POR_DEFECTO)
     try:
         guardados = json.loads(Path(ruta).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):  # no hay archivo, está roto o tiene demasiados niveles
         return ajustes
     if not isinstance(guardados, dict):
         return ajustes
@@ -66,8 +66,8 @@ def limpiar_version_1(ruta: Path, logo_antiguo: Path) -> None:
     ruta = Path(ruta)
     try:
         guardados = json.loads(ruta.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        guardados = None  # no hay archivo, o está roto: no se toca
+    except (OSError, ValueError, RecursionError):
+        guardados = None  # no hay archivo, está roto o tiene demasiados niveles: no se toca
     if isinstance(guardados, dict) and any(campo not in CAMPOS for campo in guardados):
         try:
             guardar(ruta, {campo: guardados[campo] for campo in CAMPOS if campo in guardados})

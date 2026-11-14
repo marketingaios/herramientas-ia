@@ -237,6 +237,9 @@ def test_los_tres_ajustes_se_conservan_tal_como_estaban_aunque_falte_alguno_o_no
 @pytest.mark.parametrize("contenido", [
     b"{ roto", b"", b"\xff\xfe no es texto", b'["una", "lista"]', b'"un texto"', b"null",
     json.dumps(SIN_MARCA).encode(), b'{"tope_sesion_usd": 3}', b"{}",
+    # Con demasiados niveles, leerlo da otro error (`RecursionError`): tampoco impide arrancar (revisión de la 1.1, S1).
+    pytest.param(b"[" * 100_000, id="demasiados-niveles"),
+    pytest.param(b'{"negocio": ' + b"[" * 100_000 + b"]" * 100_000 + b"}", id="la-marca-con-demasiados-niveles"),
 ])
 def test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar(config, contenido):
     config.ajustes.write_bytes(contenido)
