@@ -7,42 +7,45 @@ con chip Apple (M5), macOS 26.6, Python 3.12.13 y onnxruntime 1.32.0.
 
 | Batería | Cómo se pasa (desde `herramientas-ia`) | Pruebas | Pasan | Tarda |
 |---|---|---|---|---|
-| Rápidas (sin internet, recorte simulado) | `uv run --directory estudio-fotos --group pruebas pytest` | 830 | 830 | 1 min 10 s |
-| Con el modelo real de recorte | `uv run --directory estudio-fotos --group pruebas pytest -m modelo` | 10 | 10 | 3 min 47 s |
-| De punta a punta (Chromium sin ventana) | `uv run --directory estudio-fotos --group pruebas pytest -m e2e` | 6 | 6 | 1 min 54 s |
-| **Total** | | **846** | **846** | |
+| Rápidas (sin internet, recorte simulado) | `uv run --directory estudio-fotos --group pruebas pytest` | 834 | 834 | 1 min 11 s |
+| Con el modelo real de recorte | `uv run --directory estudio-fotos --group pruebas pytest -m modelo` | 10 | 10 | 3 min 40 s |
+| De punta a punta (Chromium sin ventana) | `uv run --directory estudio-fotos --group pruebas pytest -m e2e` | 6 | 6 | 1 min 20 s |
+| **Total** | | **850** | **850** | |
 
-Ninguna falla y ninguna se salta. Son los números de la última pasada de las tres baterías, una detrás de otra, con
-todos los cambios de la versión 1.1 hechos y antes de su revisión. La versión 1 terminó con 726 (712, 9 y 5): la 1.1
-suma 120 pruebas.
+Ninguna falla y ninguna se salta. Son los números de la última pasada de las tres baterías, una detrás de otra, sobre
+el código final: con todos los cambios de la versión 1.1 y lo corregido después de su revisión. La versión 1 terminó
+con 726 (712, 9 y 5): la 1.1 suma 124 pruebas.
 
-Mientras se hacía esa última pasada, el computador estaba ocupado con otros trabajos pesados, que no son de esta
-herramienta: por eso los tiempos del modelo real y de punta a punta salen más altos que en la pasada anterior del mismo
-día (3 min 22 s y 1 min 19 s). Las dos pasadas están anotadas abajo. Las rápidas se pasaron una vez más después de
-escribir este documento: 830 de 830, en 2 min 04 s, también con el computador ocupado.
+- Antes de la revisión eran 846 (830, 10 y 6); las 4 que faltan son las de lo corregido (ver «Después de la revisión
+  de la versión 1.1»).
+- El Revisor pasó las tres baterías por su cuenta en sus dos vueltas: 846 en la primera, y 849 en la segunda (833, 10
+  y 6, en 1 min 10 s, 3 min 25 s y 59 s), cuando faltaba la última prueba.
+- En la pasada de antes de la revisión el computador estaba ocupado con otros trabajos pesados, que no son de esta
+  herramienta, y los tiempos salieron más altos (2 min 04 s las rápidas en su peor pasada, 3 min 47 s el modelo real y
+  1 min 54 s de punta a punta). Las tres mediciones del tiempo por foto están anotadas abajo.
 
 ## El tiempo por foto en este computador
 
 Con el modelo completo (`birefnet-general`, «Calidad máxima») y el procesador, recortando todas las fotos de
 `muestras/`: hoy son las 6 de la guía 1.1, y la prueba usa las que encuentre, sin contar con un número fijo. Se midió
-dos veces el mismo día:
+tres veces el mismo día:
 
-| Foto | Pasada anterior | Última pasada | La máscara ocupa |
-|---|---|---|---|
-| `bolsa_mesa.jpg` | 9,9 s | 11,4 s | 25,8 % |
-| `bolso.jpg` | 8,6 s | 10,7 s | 21,5 % |
-| `camiseta.jpg` | 8,5 s | 11,8 s | 35,6 % |
-| `frasco_vidrio.jpg` | 8,4 s | 10,2 s | 12,1 % |
-| `taza_logo.jpg` | 8,2 s | 10,3 s | 18,8 % |
-| `zapatilla.jpg` | 8,2 s | 9,0 s | 15,1 % |
-| **Media** | **8,6 s** | **10,6 s** | |
+| Foto | Primera pasada | Antes de la revisión | Última pasada | La máscara ocupa |
+|---|---|---|---|---|
+| `bolsa_mesa.jpg` | 9,9 s | 11,4 s | 12,8 s | 25,8 % |
+| `bolso.jpg` | 8,6 s | 10,7 s | 10,4 s | 21,5 % |
+| `camiseta.jpg` | 8,5 s | 11,8 s | 10,0 s | 35,6 % |
+| `frasco_vidrio.jpg` | 8,4 s | 10,2 s | 9,4 s | 12,1 % |
+| `taza_logo.jpg` | 8,2 s | 10,3 s | 8,6 s | 18,8 % |
+| `zapatilla.jpg` | 8,2 s | 9,0 s | 10,0 s | 15,1 % |
+| **Media** | **8,6 s** | **10,6 s** | **10,2 s** | |
 
 - **Cuenta con 9 a 11 s por foto** (el recorte completo: el modelo y la limpieza del color de los bordes). La versión 1
   midió 8,9 s en este mismo computador: el recorte no cambió, y la diferencia entre pasadas es lo ocupado que esté el
   computador.
-- Preparar el modelo en memoria, una vez por sesión: 2,2 s en la pasada anterior y 3,1 s en la última.
-- En la página (recorrido 1 de punta a punta), las 6 fotos tardaron 104 s en la última pasada, unos 17 s por foto,
-  con el computador ocupado. En la pasada anterior, la batería entera tardó 1 min 19 s.
+- Preparar el modelo en memoria, una vez por sesión: entre 2,2 y 3,2 s.
+- En la página (recorrido 1 de punta a punta), las 6 fotos tardaron 72 s en la última pasada: 12 s por foto. Antes de
+  la revisión, con el computador ocupado, 104 s (unos 17 s por foto).
 
 Cada recorte tiene un producto: la máscara ocupa entre el 5 % y el 95 % de la foto en las 6 muestras, también en el
 frasco de vidrio (12,1 %).
@@ -51,18 +54,18 @@ frasco de vidrio (12,1 %).
 
 La ficha pide medirla y no suponerla. La prueba real (`test_medicion_real_despues_del_primer_lote`) recorta dos
 muestras, deja que la herramienta pruebe CoreML en su proceso aparte y recorta una tercera. Con la versión 1.1 se
-midió otra vez, en las dos pasadas:
+midió otra vez, en las tres pasadas:
 
-| | Pasada anterior | Última pasada |
-|---|---|---|
-| Procesador, modelo completo (solo el modelo; la mediana del primer lote) | 8,9 s por foto | 12,8 s por foto |
-| CoreML (`MLProgram`) | no terminó de preparar el modelo en 2 minutos: la prueba se cortó a los 120,1 s | lo mismo: cortada a los 120,1 s |
-| Con qué se queda | **el procesador** | **el procesador** |
-| El lote siguiente (la tercera foto) | funciona: 6,3 s | funciona: 11,6 s |
+| | Primera pasada | Antes de la revisión | Última pasada |
+|---|---|---|---|
+| Procesador, modelo completo (solo el modelo; la mediana del primer lote) | 8,9 s por foto | 12,8 s por foto | 9,5 s por foto |
+| CoreML (`MLProgram`) | no terminó de preparar el modelo en 2 minutos: la prueba se cortó a los 120,1 s | lo mismo | lo mismo |
+| Con qué se queda | **el procesador** | **el procesador** | **el procesador** |
+| El lote siguiente (la tercera foto) | funciona: 6,3 s | funciona: 11,6 s | funciona: 13,3 s |
 
 Es lo mismo que salió las dos veces que se midió con la versión 1, y coincide con lo que avisa la ficha: en un Mac con
 chip Apple, CoreML no sirve con BiRefNet. La página lo dice en Ajustes › Calidad del recorte, con el número de cada
-medición; en la última: «Medido en este computador: 12,8 s por foto con el procesador. La aceleración tardó más de 2
+medición; en la última: «Medido en este computador: 9,5 s por foto con el procesador. La aceleración tardó más de 2
 minutos en preparar el modelo: se usa el procesador.»
 
 En el uso normal esta prueba pasa una sola vez por modelo, después del primer lote y sin parar nada; el resultado
@@ -74,7 +77,7 @@ queda en `medicion.json`.
 
 | Archivo | Pruebas | Qué comprueba |
 |---|---|---|
-| `test_estructura.py` | 48 | la carpeta común, `AGENTS.md`, `.gitignore`, versiones fijadas, la firma, la página de inicio, el README y el comando de arranque; la versión 1.1 en todos los sitios, y que no queda el negocio de ejemplo de la versión 1 en ningún archivo |
+| `test_estructura.py` | 49 | la carpeta común, `AGENTS.md`, `.gitignore`, versiones fijadas, la firma, la página de inicio, el README y el comando de arranque; la versión 1.1 en todos los sitios, y que no queda el negocio de ejemplo de la versión 1 en ningún archivo |
 | `test_config.py` | 13 | las rutas, y que el modo de pruebas va entero (carpeta temporal y simulador) o no arranca |
 | `test_plataformas.py` | 19 | `plataformas.json`: las 8 plataformas, sus medidas y que un archivo mal editado se explica |
 | `test_subidas.py` | 44 | formato por contenido, tamaño, lado corto, HEIC, foto dañada, bombas de descompresión, nombres sin rutas |
@@ -83,7 +86,7 @@ queda en `medicion.json`.
 | `test_cola.py` | 19 | la cola: una foto tras otra, la barra, un fallo no rompe el lote, la descarga del modelo y sus errores |
 | `test_medidas.py` | 10 | las medidas en lote, los nombres de archivo, el ZIP y `resumen.csv` |
 | `test_clave.py` | 26 | la clave: solo cambia su línea, permisos 600, enmascarada, nunca en una respuesta |
-| `test_ajustes.py` | 42 | los tres ajustes (la calidad del recorte, el modelo de las escenas y el tope) y su validación, sin la clave; y la limpieza de lo que dejó la versión 1: la marca del negocio sale de `ajustes.json` y se borra el logo que guardaba Ajustes |
+| `test_ajustes.py` | 45 | los tres ajustes (la calidad del recorte, el modelo de las escenas y el tope) y su validación, sin la clave; y la limpieza de lo que dejó la versión 1: la marca del negocio sale de `ajustes.json` y se borra el logo que guardaba Ajustes |
 | `test_openrouter.py` | 40 | OpenRouter simulado: éxito, clave no válida, sin saldo (402 y 403), esperas, generación fallida, sin conexión |
 | `test_costos.py` | 35 | la estimación, el tope de la sesión (sin llamar a OpenRouter si se supera), lo que queda en la clave, `gastos.jsonl` |
 | `test_escenas.py` | 127 | las escenas: el texto, «Fondo liso de un color» y su color (solo con la forma `#RRGGBB`), el formato sin deformar, la marca IPTC, el costo estimado y el real, los errores |
@@ -108,7 +111,7 @@ El servidor se arranca como lo arranca el usuario (`python -m estudio`), en otro
 datos en una carpeta temporal, el modelo real de recorte y OpenRouter simulado.
 
 1. Abre la página, sube todas las fotos de `muestras/` (6), espera la barra hasta «6 de 6» y ve un recorte por foto
-   (104 s).
+   (72 s).
 2. Elige Mercado Libre, Amazon e Instagram, genera, descarga el ZIP y comprueba sus 25 archivos (6 recortes, 18
    medidas y `resumen.csv`): medidas, blanco puro, porcentaje y peso (3 s).
 3. En Ajustes guarda una clave falsa, ve «••••» con sus 4 últimos caracteres, pulsa Probar y ve «Conexión correcta ·
@@ -120,13 +123,14 @@ datos en una carpeta temporal, el modelo real de recorte y OpenRouter simulado.
 5. El diseño de Ismagit, en Fotos, Resultados, Ajustes y los mensajes (vacío, error, aviso, listo, confirmación y
    tope): los colores, los radios y las fuentes que calcula el navegador, Geist y Geist Mono cargadas desde este
    computador, el logo en la cabecera, un solo botón principal por zona, el foco, cada foto sobre su fondo real y la
-   página a 360 px de ancho sin desbordar (3 s).
+   página a 360 px de ancho sin desbordar (2 s).
 6. En todos los recorridos, cada petición del navegador fue a este computador (también las fuentes), la consola quedó
    sin errores y la salida del servidor no lleva la clave ni rutas personales.
 
 ## Después de la revisión de seguridad de la versión 1
 
-La revisión de la versión 1 (`REVISION.md`) dejó los 10 puntos de la ficha en «Bien» y pidió una corrección (C1) y seis sugerencias.
+La revisión de la versión 1 (`REVISION.md`) dejó los 10 puntos de la ficha en «Bien» y pidió una corrección (C1) y
+seis sugerencias.
 Lo corregido, con sus 17 pruebas nuevas (15 de las correcciones y 2 que exigen que existan `PRUEBAS.md` y
 `REVISION.md`):
 
@@ -141,6 +145,18 @@ Lo corregido, con sus 17 pruebas nuevas (15 de las correcciones y 2 que exigen q
 
 S2 (no hay contraseña local) y el resto de S5 (una sola copia a la vez) quedaron avisados en el `README.md`, sin
 cambio en el código.
+
+## Después de la revisión de la versión 1.1
+
+La revisión corta de la 1.1 (al final de `REVISION.md`) dejó en «Bien» los puntos que tocan los cambios (9, 8, 5, 2, 3
+y 6) y la dio por aprobada, con dos sugerencias (S1 y S2) y, en su segunda vuelta, una nota (N1). Las tres están
+corregidas, cada una con una prueba que falla sin el arreglo:
+
+| Qué | Prueba |
+|---|---|
+| S1 · Un `ajustes.json` con demasiados niveles se trata como un archivo roto: no se toca y no impide arrancar | `test_ajustes.py`: `test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar` (2 casos más) |
+| S2 · El temporal de guardar los ajustes queda fuera de git | `test_estructura.py`: `test_git_deja_fuera_lo_privado` (1 caso más) |
+| N1 · Un ajuste con demasiados niveles para volver a escribirlo tampoco impide arrancar: la limpieza de la versión 1 lo deja como está | `test_ajustes.py`: la misma prueba (1 caso más, y comprueba que no queda ningún temporal) |
 
 ## Las salvaguardas de las pruebas
 

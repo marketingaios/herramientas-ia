@@ -35,6 +35,9 @@ Windows.
 - Con el mismo método: un plan corto (apartado 8 de `PLAN.md`) revisado antes de construir, los pasos 23 a 34 de
   `TAREAS.md` con un commit cada uno, todas las pruebas y una revisión corta de seguridad.
 - Los resultados de las pruebas y los tiempos están en `PRUEBAS.md`; la revisión, en `REVISION.md`.
+- La revisión la dio por aprobada y dejó tres notas menores, las tres corregidas: un `ajustes.json` con demasiados
+  niveles (al leerlo o al volver a escribirlo) se trata como un archivo roto y no impide arrancar, y el temporal de
+  guardar los ajustes queda fuera de git.
 
 **Para la versión siguiente** (siguen pendientes las tres notas de la versión 1)
 

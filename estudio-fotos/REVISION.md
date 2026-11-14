@@ -724,3 +724,42 @@ midió solo en este computador.
 - Los puntos de la ficha que tocan los cambios siguen «Bien», y pasan las 849 pruebas (833 rápidas, 10 con el modelo
   real y 6 de punta a punta).
 
+## Comprobación final (N1)
+
+- **Fecha**: 14 de noviembre de 2026. El mismo Revisor, con las mismas reglas: solo añadió este apartado.
+- **Qué se revisó**: el commit `b006bc6`, el único desde `be17584`: solo N1 y su prueba. Cambia `estudio/ajustes.py`
+  y `pruebas/test_ajustes.py`; la «Segunda vuelta» entró en el commit tal como estaba (la misma huella).
+
+**N1 · Corregido**
+
+- Código: `estudio/ajustes.py:74` atrapa también `RecursionError` al volver a escribir. Como la escritura falla antes
+  de crear el temporal (`:51`), el archivo se queda como está y no queda ningún resto.
+- Comprobado por el Revisor, con datos de mentira en `estudio-fotos/.pruebas-tmp/`: el caso de la prueba (la marca y
+  2.000 niveles en `calidad_recorte`) lanza `RecursionError` con el código de `be17584` y con el de `b006bc6` no. Y
+  90 casos más (cada uno de los tres ajustes, con listas y con objetos, de 10 a 50.000 niveles, siempre con marca):
+  ninguno lanza nada ni deja temporales, el logo se borra siempre y ese ajuste vale el de fábrica.
+- Por el camino del arranque (`crear_aplicacion` sin un estudio ya hecho): termina bien, el estado no lleva la marca
+  y `ajustes.json` queda igual. En ese caso la marca sigue escrita en el archivo, que es lo que el código promete
+  («se queda como está»), y sale al guardar Ajustes desde la página: el archivo pasa a tener solo los tres ajustes.
+- Prueba: el caso nuevo de
+  `pruebas/test_ajustes.py::test_un_ajustes_json_roto_o_ya_limpio_no_se_toca_y_no_impide_arrancar` (`:243-245`), que
+  ahora comprueba además que no queda ningún temporal (`:254`). Con el código anterior falla.
+
+**¿El arreglo abrió algo nuevo?** No se encontró nada: solo cambia qué errores se atrapan en esa escritura.
+
+**Pruebas, sobre `b006bc6`**
+
+| Batería | Quién la pasó | Resultado | Tarda |
+|---|---|---|---|
+| Rápidas (`uv run --directory estudio-fotos --group pruebas pytest`) | el Revisor | 834 pasan, ninguna falla | 1 min 12 s |
+| Con el modelo real (`-m modelo`) | el Constructor (dato suyo, no comprobado por el Revisor) | 10 pasan | 3 min 40 s |
+| De punta a punta (`-m e2e`) | el Constructor (dato suyo, no comprobado por el Revisor) | 6 pasan | 1 min 20 s |
+
+Las rápidas se pasaron con dos documentos cambiados y sin commit en la carpeta de trabajo (`PRUEBAS.md` y
+`CAMBIOS.md`, con los números finales), que no son del Revisor: los leyó, no los tocó, y sus cuentas (834, 10 y 6)
+coinciden con lo de arriba. Los archivos reales y el archivo de la clave, que no se abrió, siguen con el mismo tamaño
+y la misma fecha.
+
+**Veredicto que queda: Aprobada.** S1, S2 y N1 están corregidas, cada una con una prueba que falla sin su arreglo. No
+queda nada pendiente de esta revisión.
+
