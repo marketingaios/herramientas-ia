@@ -45,7 +45,7 @@ The photos in `muestras/` are sample photos made with AI.
 
 ## License
 
-[MIT](LICENSE). The Ismagit name and logo (`marca/`) are not covered by the license. The Geist fonts have their own
+[MIT](LICENSE). The Ismagit name and logo (`marca/`) are not covered by the license ([NOTICE](NOTICE)). The Geist fonts have their own
 license (OFL).
 
 A project by [Ismagit](https://ismagit.com).

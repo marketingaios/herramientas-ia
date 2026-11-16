@@ -44,7 +44,7 @@ Las fotos de `muestras/` son fotos de ejemplo hechas con IA.
 
 ## Licencia
 
-[MIT](LICENSE). El nombre y el logo de Ismagit (`marca/`) no están incluidos en la licencia. Las fuentes Geist tienen
+[MIT](LICENSE). El nombre y el logo de Ismagit (`marca/`) no están incluidos en la licencia ([NOTICE](NOTICE)). Las fuentes Geist tienen
 su propia licencia (OFL).
 
 Un proyecto de [Ismagit](https://ismagit.com).
