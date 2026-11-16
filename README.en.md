@@ -7,26 +7,55 @@ series of the [CheloAI](https://www.youtube.com/@CheloAI) YouTube channel. Each 
 with the spec it was built from, so you can use it as is or have your own agent build it from scratch. The tools, their
 pages and their docs are in Spanish.
 
+The video (in Spanish), with the tool at work and how the agents built it:
+[Construyamos con IA · el estudio de fotos](https://youtu.be/NRCYtXvr86s).
+
 ## The tools
 
 | Tool | What it does | Folder |
 |---|---|---|
 | Estudio de fotos de producto (product photo studio) | Removes the background on your computer, places the product on pure white at each online store's size and, optionally, creates AI scenes | [`estudio-fotos/`](estudio-fotos/) |
 
-## Two ways
+## Step by step
 
-**Use it directly.** Download this repository («Code» › «Download ZIP», or `git clone`), install
-[uv](https://docs.astral.sh/uv/) and, from the `herramientas-ia` folder:
+### Use it directly
 
-```
-uv run --directory estudio-fotos python -m estudio
-```
+1. **Download** this repository: green «Code» button › «Download ZIP», and unzip it. The folder is called
+   `herramientas-ia-main`: keep that name or rename it `herramientas-ia`, the tool works with any name.
+2. **Put it** in your home folder. On Windows, outside OneDrive: syncing locks files and would upload the cut-out model
+   to the cloud.
+3. **Install [uv](https://docs.astral.sh/uv/)** once: it sets up Python and the libraries.
+   - On a Mac, open the Terminal app, paste this line and press Enter:
+     `curl -LsSf https://astral.sh/uv/install.sh | sh`
+   - On Windows, open PowerShell, paste this line and press Enter:
+     `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-Or tell your AI agent «Abre el estudio de fotos». More in [`estudio-fotos/README.md`](estudio-fotos/README.md).
+   Then close that window and open a new one, so the `uv` command is found.
+4. **Open a terminal in the folder.** On a Mac, type `cd ` (with the space), drag the folder onto the window and press
+   Enter. On Windows 11, open the folder in File Explorer, right-click an empty spot and choose «Open in Terminal» (on
+   Windows 10, Shift + right-click › «Open PowerShell window here»).
+5. **Open the studio** with this command:
 
-**Build it from scratch.** The spec [`instrucciones.md`](instrucciones.md) is all your agent (Claude Code, Codex or
-OpenCode) needs: create a `herramientas-ia` folder with the spec and the `muestras` and `marca` folders, open your agent
-there and type «Lee instrucciones.md y construye la herramienta».
+   ```
+   uv run --directory estudio-fotos python -m estudio
+   ```
+
+   The first time takes a few minutes: it installs the libraries and, with the first cut-out, downloads the model (up
+   to 1 GB). Your browser opens at http://127.0.0.1:8601. To close it, `Ctrl` + `C` in that window.
+
+If you use an AI agent (Claude Code, Codex or OpenCode), open it **inside this folder** and tell it «Abre el estudio de
+fotos»: it does step 5 for you. Everything else is in [`estudio-fotos/README.md`](estudio-fotos/README.md) (Spanish).
+
+### Build it from scratch
+
+1. Download the ZIP as above and create a new folder called `herramientas-ia` in your home folder (on Windows, outside
+   OneDrive).
+2. Copy only three things from the ZIP into it: the [`instrucciones.md`](instrucciones.md) file and the `muestras`
+   (sample photos) and `marca` (logo and fonts) folders. Nothing else: your agent builds the rest.
+3. Open your agent (Claude Code, Codex or OpenCode) **in that folder** and type «Lee instrucciones.md y construye la
+   herramienta». It works in phases and takes a few hours; it only asks permission to install something outside the
+   folder or to spend money.
+4. When it is done, type «Abre el estudio de fotos».
 
 ## How it was built
 
